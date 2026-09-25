@@ -536,6 +536,10 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   // Запуск при каждом появлении на экране (сверху или снизу),
   // сброс — когда элемент полностью ушёл с экрана
   // resetEl — чей уход с экрана сбрасывает анимацию (по умолчанию сам элемент)
+  // Блок «Локация» останавливается на время разворота фото — ScrollTrigger при
+  // этом считает, что его элементы «ушли вниз», и спрятал бы их. Блок последний
+  // на странице, поэтому его элементы сбрасываем только при уходе вверх
+  const inPinned = (el) => Boolean(el.closest && el.closest('.dominant'));
   const replay = (trigger, anim, start = 'top 85%', end = 'bottom 15%', resetEl = trigger) => {
     ScrollTrigger.create({
       trigger, start, end,
@@ -544,7 +548,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     });
     ScrollTrigger.create({
       trigger: resetEl, start: 'top bottom', end: 'bottom top',
-      onLeave: () => anim.pause(0),
+      onLeave: () => { if (!inPinned(resetEl)) anim.pause(0); },
       onLeaveBack: () => anim.pause(0),
     });
   };
@@ -635,15 +639,19 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
         transformOrigin: '50% 50%',
       },
       { x: 0, y: 0, scale: 1, clipPath: 'inset(0px 0px 0px 0px)', ease: 'power1.inOut', duration: 1 }, 0)
-    // Остальное уходит не сразу, а после 10% прокрутки и по очереди — от мелкого
-    // к крупному: метка и адрес, потом абзац с линией, потом заголовок
-    // (через filter, чтобы не мешать анимациям появления)
-    .fromTo('.dominant .label, .dominant__address',
-      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.in', duration: 0.3 }, 0.1)
-    .fromTo('.dominant__text, .dominant__link, .dominant__dot',
-      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.in', duration: 0.3 }, 0.2)
+    // Остальное уходит не сразу, а после 10% прокрутки и по одному, от мелкого
+    // к крупному, растянуто на весь разворот (через filter, чтобы не мешать
+    // анимациям появления)
+    .fromTo('.dominant .label',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.inOut', duration: 0.25 }, 0.1)
+    .fromTo('.dominant__address',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.inOut', duration: 0.25 }, 0.2)
+    .fromTo('.dominant__text',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.inOut', duration: 0.25 }, 0.3)
+    .fromTo('.dominant__link, .dominant__dot',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.inOut', duration: 0.25 }, 0.4)
     .fromTo('.dominant__center',
-      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.in', duration: 0.32 }, 0.3)
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.inOut', duration: 0.3 }, 0.5)
     // Глубина: рамка растёт, а фото внутри отдаляется и чуть смещается —
     // будто камера отъезжает; текст вокруг уходит назад
     .fromTo(expand.querySelector('img'),
