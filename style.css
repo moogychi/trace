@@ -101,19 +101,19 @@ a {
 /* Небо плывёт вверх в ровном темпе. Каждый раз, когда слайд открывается,
    движение начинается заново (под стеклом, поэтому незаметно) */
 .hero__sky img:nth-child(3) {
-  transform: scale(1.25) translate3d(0, 6%, 0);
+  transform: scale(1.4) translate3d(0, 12%, 0);
 }
 
 .hero__slide.is-active .hero__sky img:nth-child(3) {
-  animation: sky-rise 36s linear forwards;
+  animation: sky-rise 24s linear forwards;
 }
 
 @keyframes sky-rise {
   from {
-    transform: scale(1.25) translate3d(0, 6%, 0);
+    transform: scale(1.4) translate3d(0, 12%, 0);
   }
   to {
-    transform: scale(1.25) translate3d(0, -6%, 0);
+    transform: scale(1.4) translate3d(0, -12%, 0);
   }
 }
 
