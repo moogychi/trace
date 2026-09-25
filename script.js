@@ -61,7 +61,7 @@ in vec2 vUv;
 out vec4 outColor;
 
 const float PI = 3.14159265;
-const float BLUR = 0.0;    // сила размытия: 0 — без размытия, 1 — как было
+const float BLUR = 0.25;   // сила размытия: 0 — без размытия, 1 — как было
 
 float ease(float x) {
   x = clamp(x, 0.0, 1.0);
@@ -110,7 +110,7 @@ void main() {
 
   // Ребро — выпуклая линза. Сдвиг плавно уходит в ноль к краям ребра,
   // поэтому на стыках нет резких швов и тёмных линий
-  float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * 0.8 * power;
+  float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * 1.3 * power;
   vec2 uv = vUv + vec2(shift / uRes.x, 0.0);
 
   // Размытие: лёгкая матовость стекла + умеренная вспышка на смене фото
