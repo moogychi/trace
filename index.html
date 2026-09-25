@@ -3,10 +3,81 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trace</title>
+  <title>Трейс — деловой центр класса «А»</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+  <!-- Первый экран -->
+  <section class="hero">
+    <div class="hero__inner">
+      <div class="hero__bg" aria-hidden="true">
+        <div class="hero__sky">
+          <img src="img/sky-1.png" alt="">
+          <img src="img/sky-2.png" alt="">
+          <img src="img/sky-3.png" alt="">
+        </div>
+        <img class="hero__tower" src="img/tower.png" alt="">
+        <div class="hero__glow"></div>
+        <div class="hero__shade"></div>
+      </div>
+
+      <header class="header">
+        <a class="header__logo" href="#" aria-label="Трейс — на главную">
+          <img src="img/logo.svg" width="139" height="34" alt="Трейс">
+        </a>
+
+        <nav class="header__nav" id="nav" aria-label="Основное меню">
+          <a href="#about">о проекте</a>
+          <a href="#location">локация</a>
+          <a href="#offices">помещения</a>
+          <a href="#parking">паркинг</a>
+          <a href="#gallery">галерея</a>
+          <a class="header__nav-action" href="#choose">выбрать офис</a>
+        </nav>
+
+        <p class="header__tag">
+          <span class="header__tag-icon" aria-hidden="true"></span>
+          Деловой-центр класса «А»
+        </p>
+
+        <a class="header__action" href="#choose">
+          <span class="header__action-icon" aria-hidden="true"><img src="img/dot.svg" width="35.8" height="35.8" alt=""></span>
+          выбрать офис
+        </a>
+
+        <button class="header__toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav">
+          <img src="img/menu.svg" width="32" height="32" alt="">
+        </button>
+      </header>
+
+      <div class="hero__steps" aria-hidden="true">
+        <span class="hero__step">01</span>
+        <span class="hero__bar"><span></span></span>
+        <img src="img/line.svg" width="8" height="1" alt="">
+        <span class="hero__step">02</span>
+        <img src="img/line.svg" width="8" height="1" alt="">
+        <span class="hero__step">03</span>
+      </div>
+
+      <h1 class="hero__title">
+        <img src="img/hero-title.svg" width="976" height="242" alt="Трейс">
+      </h1>
+    </div>
+  </section>
+
+  <script>
+    // Открытие меню на планшетах и телефонах
+    const header = document.querySelector('.header');
+    const toggle = document.querySelector('.header__toggle');
+    toggle.addEventListener('click', () => {
+      const open = header.classList.toggle('is-open');
+      toggle.setAttribute('aria-expanded', open);
+      toggle.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
+    });
+  </script>
 </body>
 </html>

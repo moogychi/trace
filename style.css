@@ -4,7 +4,349 @@
   box-sizing: border-box;
 }
 
+:root {
+  /* LT Amber из макета платный — пока вместо него Manrope */
+  --font: "LT Amber", "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --white: #fff;
+  --accent: #4e6365;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font);
+  background: var(--white);
+}
+
+img {
+  display: block;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===== Первый экран ===== */
+
+.hero {
+  /* Внутри .hero размеры считаются от ширины: 1px макета = --k */
+  container-type: inline-size;
+}
+
+.hero__inner {
+  --k: calc(100cqw / 1440);
+  position: relative;
+  height: calc(820 * var(--k));
+  overflow: hidden;
+  color: var(--white);
+  background: var(--accent);
+}
+
+.hero__bg,
+.hero__shade {
+  position: absolute;
+  inset: 0;
+}
+
+.hero__sky {
+  position: absolute;
+  left: calc(-59 * var(--k));
+  top: calc(-72 * var(--k));
+  width: calc(1554 * var(--k));
+  height: calc(928 * var(--k));
+  transform: scaleX(-1);
+}
+
+.hero__sky img,
+.hero__tower {
+  position: absolute;
+  object-fit: cover;
+}
+
+.hero__sky img {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero__tower {
+  left: calc(-203 * var(--k));
+  top: calc(-11 * var(--k));
+  width: calc(789 * var(--k));
+  height: calc(1039 * var(--k));
+}
+
+.hero__glow {
+  position: absolute;
+  left: calc(-63 * var(--k));
+  top: calc(426 * var(--k));
+  width: calc(201 * var(--k));
+  height: calc(464 * var(--k));
+  border-radius: 50px;
+  background: var(--accent);
+  opacity: 0.3;
+  filter: blur(60px);
+}
+
+.hero__shade {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0));
+}
+
+/* ----- Шапка ----- */
+
+.header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.header__logo {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+}
+
+.header__nav {
+  position: absolute;
+  left: 30.14%;
+  top: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.header__nav a:hover,
+.header__action:hover {
+  opacity: 0.7;
+}
+
+.header__nav-action {
+  display: none;
+}
+
+.header__tag {
+  position: absolute;
+  left: 50%;
+  top: 22px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.header__tag-icon {
+  width: 14px;
+  height: 14px;
+  margin: 1px;
+  background: var(--white);
+}
+
+.header__action {
+  position: absolute;
+  right: 96px;
+  top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  white-space: nowrap;
+}
+
+.header__action-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+
+.header__action-icon img {
+  position: absolute;
+  left: -6.9px;
+  top: -7.9px;
+  max-width: none;
+}
+
+.header__toggle {
+  position: absolute;
+  right: 20px;
+  top: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* ----- Счётчик слайдов 01 / 02 / 03 ----- */
+
+.hero__steps {
+  position: absolute;
+  z-index: 1;
+  left: calc(32 * var(--k));
+  top: calc(504 * var(--k));
+  width: 19px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: 0.1em;
+}
+
+.hero__bar {
+  position: relative;
+  width: 8px;
+  height: 164px;
+  margin-top: -12px; /* между «01» и полосой отступ 4px */
+  border: 1px solid var(--white);
+}
+
+.hero__bar span {
+  position: absolute;
+  left: -0.5px;
+  top: -1px;
+  width: 8px;
+  height: 105px;
+  background: var(--white);
+}
+
+/* ----- Большое слово «ТРЕЙС» ----- */
+
+.hero__title {
+  position: absolute;
+  z-index: 1;
+  left: 30.14%;
+  bottom: calc(24 * var(--k));
+  width: 67.78%;
+  margin: 0;
+}
+
+.hero__title img {
+  width: 100%;
+  height: auto;
+}
+
+/* ===== Планшет ===== */
+
+@media (max-width: 1199px) {
+  .hero__inner {
+    height: 100svh;
+    min-height: 560px;
+  }
+
+  /* Фон и башня растягиваются по высоте экрана */
+  .hero__sky {
+    inset: 0;
+    width: auto;
+    height: auto;
+  }
+
+  /* Башня стоит на нижнем крае, левая грань здания — у края экрана */
+  .hero__tower {
+    left: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 85%;
+    transform: translateX(-38%);
+  }
+
+  .hero__glow {
+    top: 52%;
+    height: 45%;
+  }
+
+  .header__tag {
+    display: none;
+  }
+
+  /* Меню открывается кнопкой */
+  .header__nav {
+    left: auto;
+    right: 20px;
+    top: 64px;
+    min-width: 220px;
+    padding: 24px;
+    gap: 20px;
+    background: rgba(40, 58, 60, 0.72);
+    backdrop-filter: blur(16px);
+    visibility: hidden;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+  }
+
+  .header.is-open .header__nav {
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+  }
+
+  .hero__steps {
+    left: 24px;
+    top: auto;
+    bottom: 40%;
+  }
+
+  .hero__title {
+    left: 24px;
+    right: 24px;
+    bottom: 24px;
+    width: auto;
+  }
+}
+
+/* ===== Телефон ===== */
+
+@media (max-width: 599px) {
+  .hero__inner {
+    min-height: 520px;
+  }
+
+  .header__logo {
+    left: 16px;
+    top: 18px;
+  }
+
+  .header__logo img {
+    width: 111px;
+    height: auto;
+  }
+
+  .header__toggle {
+    right: 16px;
+  }
+
+  .header__action {
+    display: none;
+  }
+
+  .header__nav {
+    left: 16px;
+    right: 16px;
+    top: 60px;
+  }
+
+  .header__nav-action {
+    display: block;
+    color: #68d979;
+  }
+
+  .hero__tower {
+    height: 72%;
+  }
+
+  .hero__steps {
+    display: none;
+  }
+
+  .hero__title {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
+  }
 }
