@@ -1,6 +1,6 @@
 # trace
 
-Статический сайт: `index.html` + `style.css`, без сборки и зависимостей.
+Статический сайт: `index.html` + `style.css` + `script.js`, без сборки и зависимостей.
 
 Репозиторий: https://github.com/moogychi/trace (ветка `main`), приватный, GitHub Pages выключен.
 Смотреть сайт — локально через Live Server.
