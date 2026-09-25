@@ -420,3 +420,44 @@ hero.addEventListener('touchend', (e) => {
 });
 
 show(0, false);
+
+
+// ===== Башня и девушка следуют за мышкой (в обратную сторону) =====
+//
+// Положение мышки на экране — от -1 до 1 по каждой оси. Текущее значение
+// плавно догоняет его (примерно за треть секунды), поэтому без рывков.
+// Во время смены слайдов положение замирает, чтобы стекло не дёрнулось в конце.
+
+const hasMouse = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+if (hasMouse && !reduceMotion.matches) {
+  const aim = { x: 0, y: 0 };
+  const pos = { x: 0, y: 0 };
+  let lastTick = performance.now();
+
+  hero.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'mouse') return;
+    const r = hero.getBoundingClientRect();
+    aim.x = ((e.clientX - r.left) / r.width) * 2 - 1;
+    aim.y = ((e.clientY - r.top) / r.height) * 2 - 1;
+  });
+  // Мышка ушла с экрана — плавно возвращаемся в центр
+  hero.addEventListener('pointerleave', () => {
+    aim.x = 0;
+    aim.y = 0;
+  });
+
+  const follow = (now) => {
+    const dt = Math.min(now - lastTick, 50);
+    lastTick = now;
+    if (!hero.classList.contains('is-glass')) {
+      const k = 1 - Math.exp(-dt / 300); // сглаживание: ~300 мс
+      pos.x += (aim.x - pos.x) * k;
+      pos.y += (aim.y - pos.y) * k;
+      hero.style.setProperty('--mx', pos.x.toFixed(4));
+      hero.style.setProperty('--my', pos.y.toFixed(4));
+    }
+    requestAnimationFrame(follow);
+  };
+  requestAnimationFrame(follow);
+}
