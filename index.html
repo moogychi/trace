@@ -141,17 +141,20 @@
       timer = setTimeout(() => show(current + 1), delay);
     }
 
-    // Ребристое стекло: полосы по очереди наезжают слева направо,
-    // под ними меняется картинка, потом полосы уходят справа налево
+    // Ребристое стекло: полосы наезжают с обоих краёв к центру, размытие растёт,
+    // на пике размытия меняется картинка, потом полосы расходятся к краям
     const glassFilter = document.querySelector('#hero-glass');
     const glassMap = glassFilter.querySelector('.glass-map');
     const glassMask = glassFilter.querySelector('.glass-mask');
+    const glassBlur = glassFilter.querySelector('feGaussianBlur');
     const glassShift = glassFilter.querySelector('feDisplacementMap');
     const sheen = hero.querySelector('.hero__glass');
     const sheenCtx = sheen.getContext('2d');
     const mapCanvas = document.createElement('canvas');
     const maskCanvas = document.createElement('canvas');
-    const glassTime = 2200;
+    const glassTime = 3800;
+    const blurMin = 2;
+    const blurMax = 28;
     let w = 0;
     let h = 0;
     let strip = 60;
@@ -175,17 +178,28 @@
       glassShift.setAttribute('scale', Math.round(strip * 1.2));
     }
 
-    // Плавный переход 0 → 1
-    function smooth(x) {
+    // Плавный разгон и торможение 0 → 1
+    function ease(x) {
       x = Math.min(Math.max(x, 0), 1);
-      return x * x * (3 - 2 * x);
+      return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
     }
 
-    // Насколько полоса i «под стеклом» в момент t (0…1)
+    // Насколько полоса i «под стеклом» в момент t (0…1):
+    // 0–0.4 — полосы наезжают от краёв к центру, 0.4–0.6 — экран закрыт,
+    // 0.6–1 — полосы расходятся от центра к краям
     function stripPower(i, t) {
-      const p = count > 1 ? i / (count - 1) : 0;
-      if (t <= 0.5) return smooth((t / 0.5 - p * 0.55) / 0.45);
-      return 1 - smooth(((t - 0.5) / 0.5 - (1 - p) * 0.55) / 0.45);
+      const c = (i + 0.5) / count;
+      const p = 1 - Math.abs(2 * c - 1); // 0 у краёв, 1 в центре
+      const spread = 0.6;
+      if (t < 0.4) return ease((t / 0.4 - p * spread) / (1 - spread));
+      if (t < 0.6) return 1;
+      return 1 - ease(((t - 0.6) / 0.4 - (1 - p) * spread) / (1 - spread));
+    }
+
+    // Размытие плавно растёт до середины перехода и так же спадает
+    function blurAt(t) {
+      const bell = t < 0.5 ? ease(t / 0.5) : ease((1 - t) / 0.5);
+      return blurMin + (blurMax - blurMin) * bell;
     }
 
     function drawGlass(t) {
@@ -226,6 +240,7 @@
       }
       sheenCtx.globalAlpha = 1;
 
+      glassBlur.setAttribute('stdDeviation', blurAt(t).toFixed(2));
       map.putImageData(data, 0, 0);
       glassMap.setAttribute('href', mapCanvas.toDataURL());
       glassMask.setAttribute('href', maskCanvas.toDataURL());
@@ -242,8 +257,8 @@
       function frame(now) {
         const t = Math.min((now - start) / glassTime, 1);
         drawGlass(t);
-        // Меняем картинку, когда стекло закрыло почти весь экран
-        if (t >= 0.45 && pendingSwap) {
+        // Меняем картинку, когда стекло закрыло весь экран и размытие почти на пике
+        if (t >= 0.41 && pendingSwap) {
           pendingSwap();
           pendingSwap = null;
         }
