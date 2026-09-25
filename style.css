@@ -719,15 +719,14 @@ button.hero__step:not(.is-active):hover {
 
 /* ===== Блок 4: локация — новая деловая доминанта ===== */
 
+/* Блок ровно в высоту экрана: развёрнутое фото заканчивается точно на весь
+   экран, без лишней прокрутки. Масштаб — по ширине или по высоте, что меньше,
+   чтобы содержимое всегда помещалось */
 .dominant__inner {
+  --k: min(calc(100cqw / 1440), calc(100svh / 800));
   position: relative;
-  height: calc(800 * var(--k));
-}
-
-/* С разворотом фото блок не ниже экрана, а фото — на всю высоту блока:
-   после разворота внизу не остаётся белой полосы */
-.dominant.is-expandable .dominant__inner {
-  height: max(calc(800 * var(--k)), 100vh);
+  height: 100svh;
+  min-height: calc(800 * var(--k));
 }
 
 .dominant .label {
@@ -751,7 +750,7 @@ button.hero__step:not(.is-active):hover {
 /* Фото и заголовок по центру блока */
 .dominant__center {
   position: absolute;
-  left: calc(182 * var(--k));
+  left: calc(50% - 538 * var(--k)); /* по центру экрана при любом масштабе */
   top: calc(97 * var(--k));
   width: calc(1076 * var(--k));
   display: flex;
@@ -821,22 +820,23 @@ button.hero__step:not(.is-active):hover {
 /* Линия от выделенных слов к центру и квадратик на стыке */
 .dominant__link {
   position: absolute;
-  left: calc(281 * var(--k));
-  top: calc(563 * var(--k));
-  width: calc(491 * var(--k));
-  height: calc(135 * var(--k));
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
   overflow: visible;
   fill: none;
   stroke: #c0c9c8;
   stroke-width: 1;
 }
 
-/* квадратик — точно по центру стыка вертикальной и горизонтальной линий */
+/* квадратик — по центру вертикальной линии, верхней гранью на линии;
+   место задаёт script.js */
 .dominant__dot {
   position: absolute;
-  left: calc(721.2 * var(--k));
-  top: calc(563.5 * var(--k));
-  translate: -50% -50%;
+  left: 0;
+  top: 0;
+  translate: -50% 0;
   width: calc(7 * var(--k));
   height: calc(7 * var(--k));
   background: #c0c9c8;

@@ -185,9 +185,10 @@
       </div>
 
       <!-- Линия от выделенных слов к центру блока -->
-      <svg class="dominant__link" viewBox="0 0 491 135" preserveAspectRatio="none" aria-hidden="true">
-        <path class="dominant__link-main" d="M0 134.5H439.621L440.198 0.5"/>
-        <path class="dominant__link-bar" d="M387.5 0.5H491"/>
+      <!-- Путь линии строит script.js по реальному положению плашки и заголовка -->
+      <svg class="dominant__link" aria-hidden="true">
+        <path class="dominant__link-main" pathLength="1" d="M0 0"/>
+        <path class="dominant__link-bar" pathLength="1" d="M0 0"/>
       </svg>
       <span class="dominant__dot" aria-hidden="true"></span>
 

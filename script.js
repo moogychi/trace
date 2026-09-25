@@ -620,7 +620,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     scrollTrigger: {
       trigger: dominant,
       start: 'top top',
-      end: '+=170%',
+      end: '+=130%',
       pin: true,
       scrub: 1,
       invalidateOnRefresh: true,
@@ -635,10 +635,15 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
         transformOrigin: '50% 50%',
       },
       { x: 0, y: 0, scale: 1, clipPath: 'inset(0px 0px 0px 0px)', ease: 'power1.inOut', duration: 1 }, 0)
-    // остальное уходит (через filter, чтобы не мешать анимациям появления)
-    .fromTo('.dominant__center, .dominant__text, .dominant__link, .dominant__dot, .dominant .label, .dominant__address',
-      { filter: 'opacity(1)' },
-      { filter: 'opacity(0)', ease: 'none', duration: 0.4 }, 0)
+    // Остальное уходит не сразу, а после 10% прокрутки и по очереди — от мелкого
+    // к крупному: метка и адрес, потом абзац с линией, потом заголовок
+    // (через filter, чтобы не мешать анимациям появления)
+    .fromTo('.dominant .label, .dominant__address',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'none', duration: 0.15 }, 0.1)
+    .fromTo('.dominant__text, .dominant__link, .dominant__dot',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'none', duration: 0.18 }, 0.18)
+    .fromTo('.dominant__center',
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'none', duration: 0.22 }, 0.28)
     // Глубина: рамка растёт, а фото внутри отдаляется и чуть смещается —
     // будто камера отъезжает; текст вокруг уходит назад
     .fromTo(expand.querySelector('img'),
@@ -646,9 +651,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
       { scale: 1, yPercent: 0, ease: 'power1.inOut', duration: 1 }, 0)
     .fromTo('.dominant__center, .dominant__text, .dominant .label, .dominant__address',
       { scale: 1, y: 0 },
-      { scale: 0.92, y: -40, ease: 'power1.in', duration: 0.5 }, 0)
-    // когда фото на весь экран — медленное приближение, пока блок ещё стоит
-    .to(expand.querySelector('img'), { scale: 1.08, ease: 'none', duration: 0.4 }, 1);
+      { scale: 0.92, y: -40, ease: 'power1.in', duration: 0.45 }, 0.1);
 
   // Блок «Локация»: текст проявляется, бирюзовая плашка прочерчивается
   // под словами «7 трлн рублей инвестиций», от неё к центру блока бежит линия,
@@ -656,10 +659,8 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   const dominantText = document.querySelector('.dominant__text');
   const mark = dominantText.querySelector('.dominant__mark');
   const [linkMain, linkBar] = document.querySelectorAll('.dominant__link path');
-  const draw = (path) => {
-    const length = path.getTotalLength();
-    return [path, { strokeDasharray: length, strokeDashoffset: length }, { strokeDashoffset: 0 }];
-  };
+  // длина путей задана как 1 (pathLength), поэтому линия «рисуется» от 1 до 0
+  const draw = (path) => [path, { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
   const [mainEl, mainFrom, mainTo] = draw(linkMain);
   const [barEl, barFrom, barTo] = draw(linkBar);
 
@@ -963,3 +964,40 @@ try {
 } catch (err) {
   console.warn('Живое стекло в меню недоступно, будет картинка:', err);
 }
+
+
+// ===== Линия в блоке «Локация» =====
+//
+// Строится по реальному положению элементов (шрифт, размер экрана могут
+// сдвигать текст): выходит ровно из правого верхнего угла бирюзовой плашки,
+// идёт вправо до центра заголовка и вверх до короткой горизонтальной черты
+// под заголовком. Квадратик — по центру, верхней гранью на черте.
+
+function layoutDominantLink() {
+  const inner = document.querySelector('.dominant__inner');
+  const mark = document.querySelector('.dominant__mark');
+  const center = document.querySelector('.dominant__center');
+  const svg = document.querySelector('.dominant__link');
+  const dot = document.querySelector('.dominant__dot');
+  if (!inner || !mark || !center || !svg || !dot) return;
+
+  // координаты считаем без трансформаций (во время разворота элементы сдвигаются)
+  const box = inner.getBoundingClientRect();
+  const k = Math.min(inner.clientWidth / 1440, window.innerHeight / 800);
+  const m = mark.getClientRects()[0] || mark.getBoundingClientRect();
+  const x0 = m.right - box.left;
+  const y0 = m.top - box.top;
+  const jx = center.offsetLeft + center.offsetWidth / 2;
+  const barY = center.offsetTop + center.offsetHeight + 30.5 * k;
+
+  svg.setAttribute('viewBox', `0 0 ${inner.clientWidth} ${inner.clientHeight}`);
+  const [main, bar] = svg.querySelectorAll('path');
+  main.setAttribute('d', `M${x0} ${y0}H${jx}V${barY}`);
+  bar.setAttribute('d', `M${jx - 52.7 * k} ${barY}H${jx + 50.8 * k}`);
+  dot.style.left = `${jx}px`;
+  dot.style.top = `${barY - 0.5}px`;
+}
+
+layoutDominantLink();
+document.fonts.ready.then(layoutDominantLink);
+window.addEventListener('resize', layoutDominantLink);
