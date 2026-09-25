@@ -36,7 +36,16 @@ const bg = hero.querySelector('.hero__bg');
 const glassCanvas = hero.querySelector('.hero__glass');
 const ACCENT = '#4e6365';
 
-const GLASS_TIME = 4600; // длительность перехода, мс
+// Настройки эффектов. Их можно подобрать ползунками: откройте сайт с ?tune в адресе
+const tune = {
+  glassTime: 4600, // длительность перехода, мс
+  refract: 1.1,    // преломление под стеклом (доля ширины ребра)
+  blur: 0.25,      // сила размытия: 0 — без размытия, 1 — полное
+  shiftX: 16,      // сдвиг башни и девушки от мышки по горизонтали, px
+  shiftY: 10,      // … по вертикали, px
+  inertia: 1.6,    // инерция: за сколько секунд объект «доплывает» до места
+  bounce: 0.2,     // пружинистость: 0 — без перелёта, 0.5 — заметно качается
+};
 const SWAP_AT = 0.5;     // когда под холстом меняется настоящий слайд
 
 const VERTEX = `#version 300 es
@@ -57,11 +66,12 @@ uniform float uMix;        // доля нового слайда
 uniform float uStrip;      // ширина ребра в пикселях
 uniform float uDpr;
 uniform float uTime;       // секунды с начала перехода — для бегущего света
+uniform float uBlur;       // сила размытия (tune.blur)
+uniform float uRefract;    // преломление (tune.refract)
 in vec2 vUv;
 out vec4 outColor;
 
 const float PI = 3.14159265;
-const float BLUR = 0.25;   // сила размытия: 0 — без размытия, 1 — как было
 
 float ease(float x) {
   x = clamp(x, 0.0, 1.0);
@@ -110,13 +120,13 @@ void main() {
 
   // Ребро — выпуклая линза. Сдвиг плавно уходит в ноль к краям ребра,
   // поэтому на стыках нет резких швов и тёмных линий
-  float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * 1.1 * power;
+  float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * uRefract * power;
   vec2 uv = vUv + vec2(shift / uRes.x, 0.0);
 
   // Размытие: лёгкая матовость стекла + умеренная вспышка на смене фото
   // (к центру экрана сильнее)
   float centre = smoothstep(0.0, 1.0, 1.0 - abs(2.0 * vUv.x - 1.0));
-  float radius = BLUR * (power * 2.9 + blurCurve(uT) * mix(20.0, 29.0, centre) * mix(0.8, 1.0, power)) * uDpr;
+  float radius = uBlur * (power * 2.9 + blurCurve(uT) * mix(20.0, 29.0, centre) * mix(0.8, 1.0, power)) * uDpr;
 
   vec3 col;
   if (uMix <= 0.0) col = blurred(uA, uv, radius);
@@ -255,7 +265,7 @@ function createGlass() {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const u = {};
-  ['uA', 'uB', 'uRes', 'uT', 'uMix', 'uStrip', 'uDpr', 'uTime'].forEach((name) => {
+  ['uA', 'uB', 'uRes', 'uT', 'uMix', 'uStrip', 'uDpr', 'uTime', 'uBlur', 'uRefract'].forEach((name) => {
     u[name] = gl.getUniformLocation(program, name);
   });
   gl.uniform1i(u.uA, 0);
@@ -295,6 +305,8 @@ function createGlass() {
     },
     draw(t, seconds = 0) {
       gl.uniform1f(u.uT, t);
+      gl.uniform1f(u.uBlur, tune.blur);
+      gl.uniform1f(u.uRefract, tune.refract);
       gl.uniform1f(u.uTime, seconds);
       // Фото плавно растворяется одно в другом (прозрачностью)
       const m = Math.min(Math.max((t - 0.36) / 0.28, 0), 1);
@@ -360,7 +372,7 @@ function transition(from, to) {
     // Шаг не больше 50 мс: после скрытой вкладки анимация продолжится, а не перескочит
     elapsed += Math.min(now - last, 50);
     last = now;
-    const t = Math.min(elapsed / GLASS_TIME, 1);
+    const t = Math.min(elapsed / tune.glassTime, 1);
     glass.draw(t, elapsed / 1000);
     if (t >= SWAP_AT && !swapped) {
       swapped = true;
@@ -424,16 +436,24 @@ show(0, false);
 
 // ===== Башня и девушка следуют за мышкой (в обратную сторону) =====
 //
-// Положение мышки на экране — от -1 до 1 по каждой оси. Текущее значение
-// плавно догоняет его (примерно за треть секунды), поэтому без рывков.
-// Во время смены слайдов положение замирает, чтобы стекло не дёрнулось в конце.
+// Положение мышки на экране — от -1 до 1 по каждой оси. Объект тянется к нему
+// как на пружине: плавно разгоняется, тормозит и чуть проскакивает цель —
+// так чувствуется вес и инерция. Во время смены слайдов положение замирает,
+// чтобы стекло не дёрнулось в конце.
 
 const hasMouse = matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+function applyShift() {
+  hero.style.setProperty('--shift-x', `${-tune.shiftX}px`);
+  hero.style.setProperty('--shift-y', `${-tune.shiftY}px`);
+}
 
 if (hasMouse && !reduceMotion.matches) {
   const aim = { x: 0, y: 0 };
   const pos = { x: 0, y: 0 };
+  const vel = { x: 0, y: 0 };
   let lastTick = performance.now();
+  applyShift();
 
   hero.addEventListener('pointermove', (e) => {
     if (e.pointerType !== 'mouse') return;
@@ -448,16 +468,74 @@ if (hasMouse && !reduceMotion.matches) {
   });
 
   const follow = (now) => {
-    const dt = Math.min(now - lastTick, 50);
+    const dt = Math.min(now - lastTick, 50) / 1000;
     lastTick = now;
     if (!hero.classList.contains('is-glass')) {
-      const k = 1 - Math.exp(-dt / 300); // сглаживание: ~300 мс
-      pos.x += (aim.x - pos.x) * k;
-      pos.y += (aim.y - pos.y) * k;
+      // Пружина: чем больше инерция — тем медленнее, чем меньше гашение — тем больше качается
+      const omega = (2 * Math.PI) / Math.max(tune.inertia, 0.1);
+      const damping = 1 - Math.min(Math.max(tune.bounce, 0), 0.7);
+      ['x', 'y'].forEach((axis) => {
+        const acc = omega * omega * (aim[axis] - pos[axis]) - 2 * damping * omega * vel[axis];
+        vel[axis] += acc * dt;
+        pos[axis] += vel[axis] * dt;
+      });
       hero.style.setProperty('--mx', pos.x.toFixed(4));
       hero.style.setProperty('--my', pos.y.toFixed(4));
     }
     requestAnimationFrame(follow);
   };
   requestAnimationFrame(follow);
+}
+
+
+// ===== Панель настройки эффектов (только если в адресе есть ?tune) =====
+//
+// Ползунки меняют настройки сразу, без перезагрузки. Кнопка «Скопировать»
+// кладёт числа в буфер обмена — их можно прислать, и они станут основными.
+
+if (new URLSearchParams(location.search).has('tune')) {
+  const fields = [
+    ['shiftX', 'Сдвиг от мышки по горизонтали, px', 0, 60, 1],
+    ['shiftY', 'Сдвиг от мышки по вертикали, px', 0, 60, 1],
+    ['inertia', 'Инерция, с (больше — медленнее)', 0.3, 5, 0.1],
+    ['bounce', 'Пружинистость (0 — без перелёта)', 0, 0.7, 0.05],
+    ['refract', 'Преломление под стеклом', 0, 2.5, 0.05],
+    ['blur', 'Размытие при смене', 0, 1.5, 0.05],
+    ['glassTime', 'Длительность смены, мс', 1500, 9000, 100],
+  ];
+
+  const panel = document.createElement('div');
+  panel.className = 'tune';
+  panel.innerHTML = '<p class="tune__title">Настройка эффектов</p>';
+
+  fields.forEach(([key, label, min, max, step]) => {
+    const row = document.createElement('label');
+    row.className = 'tune__row';
+    row.innerHTML = `<span>${label}: <b>${tune[key]}</b></span>
+      <input type="range" min="${min}" max="${max}" step="${step}" value="${tune[key]}">`;
+    const input = row.querySelector('input');
+    const value = row.querySelector('b');
+    input.addEventListener('input', () => {
+      tune[key] = Number(input.value);
+      value.textContent = input.value;
+      applyShift();
+    });
+    panel.append(row);
+  });
+
+  const buttons = document.createElement('div');
+  buttons.className = 'tune__buttons';
+  buttons.innerHTML = '<button type="button">Показать смену</button><button type="button">Скопировать</button>';
+  const [playButton, copyButton] = buttons.querySelectorAll('button');
+  playButton.addEventListener('click', () => show(current + 1));
+  copyButton.addEventListener('click', () => {
+    const text = JSON.stringify(tune, null, 2);
+    navigator.clipboard.writeText(text).then(
+      () => { copyButton.textContent = 'Скопировано'; },
+      () => { window.prompt('Скопируйте настройки:', text); },
+    );
+    setTimeout(() => { copyButton.textContent = 'Скопировать'; }, 1500);
+  });
+  panel.append(buttons);
+  document.body.append(panel);
 }
