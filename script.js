@@ -620,7 +620,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     scrollTrigger: {
       trigger: dominant,
       start: 'top top',
-      end: '+=130%',
+      end: '+=170%',
       pin: true,
       scrub: 1,
       invalidateOnRefresh: true,
@@ -638,7 +638,17 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     // остальное уходит (через filter, чтобы не мешать анимациям появления)
     .fromTo('.dominant__center, .dominant__text, .dominant__link, .dominant__dot, .dominant .label, .dominant__address',
       { filter: 'opacity(1)' },
-      { filter: 'opacity(0)', ease: 'none', duration: 0.4 }, 0);
+      { filter: 'opacity(0)', ease: 'none', duration: 0.4 }, 0)
+    // Глубина: рамка растёт, а фото внутри отдаляется и чуть смещается —
+    // будто камера отъезжает; текст вокруг уходит назад
+    .fromTo(expand.querySelector('img'),
+      { scale: 1.45, yPercent: 6 },
+      { scale: 1, yPercent: 0, ease: 'power1.inOut', duration: 1 }, 0)
+    .fromTo('.dominant__center, .dominant__text, .dominant .label, .dominant__address',
+      { scale: 1, y: 0 },
+      { scale: 0.92, y: -40, ease: 'power1.in', duration: 0.5 }, 0)
+    // когда фото на весь экран — медленное приближение, пока блок ещё стоит
+    .to(expand.querySelector('img'), { scale: 1.08, ease: 'none', duration: 0.4 }, 1);
 
   // Блок «Локация»: текст проявляется, бирюзовая плашка прочерчивается
   // под словами «7 трлн рублей инвестиций», от неё к центру блока бежит линия,
