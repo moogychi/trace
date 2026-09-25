@@ -22,14 +22,16 @@ document.addEventListener('click', (e) => {
 });
 
 
-// ===== Ребристое стекло для смены слайдов (WebGL) =====
+// ===== Фон первого экрана на видеокарте (WebGL) =====
 //
-// В начале перехода оба слайда «фотографируются» в картинки, дальше
-// видеокарта рисует поверх них стекло одной волной: рёбра накатывают
-// от краёв к центру и сразу откатываются, размытие плавно растёт и спадает,
-// в самой размытой точке меняется фото, по рёбрам бежит свет. В конце холст
-// прячется, и под ним уже настоящий новый слайд — выглядит точно так же,
-// поэтому шва не видно.
+// Фон всегда рисуется на холсте поверх настоящих слайдов: браузер раскладывает
+// картинки как обычно, а мы несколько раз в секунду «фотографируем» текущий
+// слайд и рисуем его как гибкое полотно — по нему медленно идут пологие волны,
+// на изгибах мягкий свет и тень. Меню и «ТРЕЙС» остаются ровными поверх.
+//
+// При смене слайдов поверх волн идёт ребристое стекло: рёбра накатывают от
+// краёв к центру и откатываются, размытие растёт и спадает, фото сменяются
+// растворением, по рёбрам бежит свет.
 
 const hero = document.querySelector('.hero');
 const bg = hero.querySelector('.hero__bg');
@@ -49,14 +51,14 @@ void main() {
 
 const FRAGMENT = `#version 300 es
 precision highp float;
-uniform sampler2D uA;      // слайд «было»
+uniform sampler2D uA;      // текущий слайд / слайд «было»
 uniform sampler2D uB;      // слайд «стало»
 uniform vec2 uRes;         // размер холста в пикселях
-uniform float uT;          // ход перехода 0…1
+uniform float uT;          // ход перехода 0…1 (0 — перехода нет)
 uniform float uMix;        // доля нового слайда
 uniform float uStrip;      // ширина ребра в пикселях
 uniform float uDpr;
-uniform float uTime;       // секунды с начала перехода — для бегущего света
+uniform float uClock;      // секунды — для волн и бегущего света
 in vec2 vUv;
 out vec4 outColor;
 
@@ -83,6 +85,11 @@ float glassPower(float x) {
   return comeIn * goOut;
 }
 
+// Одна волна полотна: добавляет наклон поверхности в этой точке
+void wave(inout vec2 slope, vec2 q, vec2 k, float speed, float phase, float amp) {
+  slope += amp * cos(dot(k, q) + uClock * speed + phase) * k;
+}
+
 // Размытие: уменьшенная копия картинки (mip) + 16 точек по спирали
 vec3 blurred(sampler2D tex, vec2 uv, float radius) {
   if (radius < 0.5) return texture(tex, uv).rgb;
@@ -100,6 +107,21 @@ vec3 blurred(sampler2D tex, vec2 uv, float radius) {
 
 void main() {
   vec2 px = vUv * uRes;
+
+  // ----- Гибкое полотно: три пологие волны под разными углами -----
+  float aspect = uRes.x / uRes.y;
+  vec2 q = vec2(vUv.x * aspect, vUv.y);
+  vec2 slope = vec2(0.0);
+  wave(slope, q, vec2(2.2, 1.1), 0.35, 0.0, 0.5);
+  wave(slope, q, vec2(-1.3, 2.4), 0.27, 1.7, 0.35);
+  wave(slope, q, vec2(3.6, -0.8), 0.45, 4.0, 0.18);
+  // Картинка чуть увеличена, чтобы при изгибе не было видно краёв
+  vec2 base = (vUv - 0.5) * 0.94 + 0.5;
+  base += vec2(slope.x / aspect, slope.y) * 0.011;
+  // Свет сверху-слева: склоны к свету светлее, от света — темнее
+  float clothShade = 1.0 + dot(slope, normalize(vec2(-0.6, 0.8))) * 0.06;
+
+  // ----- Ребристое стекло (только во время смены слайдов) -----
   float power = glassPower(vUv.x);
 
   // Рёбра медленно плывут вбок, пока идёт переход
@@ -110,7 +132,7 @@ void main() {
   // Ребро — выпуклая линза. Сдвиг плавно уходит в ноль к краям ребра,
   // поэтому на стыках нет резких швов и тёмных линий
   float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * 0.8 * power;
-  vec2 uv = vUv + vec2(shift / uRes.x, 0.0);
+  vec2 uv = base + vec2(shift / uRes.x, 0.0);
 
   // Размытие: лёгкая матовость стекла + умеренная вспышка на смене фото
   // (к центру экрана сильнее)
@@ -127,17 +149,18 @@ void main() {
   float shade = mix(0.975, 1.015, bulge);
 
   // Световая волна бежит по диагонали через все рёбра — мягкий размытый перелив
-  float diag = (px.x + px.y * 0.8) / (uStrip * 11.0) - uTime * 0.3;
+  float diag = (px.x + px.y * 0.8) / (uStrip * 11.0) - uClock * 0.3;
   float sweep = pow(0.5 + 0.5 * cos(2.0 * PI * diag), 4.0);
 
-  col *= mix(1.0, shade, power);
+  col *= mix(1.0, shade, power) * clothShade;
   col += sweep * (0.035 + 0.05 * bulge) * power;
 
   outColor = vec4(col, 1.0);
 }`;
 
-// «Фотография» слайда: рисуем его картинки на холст так же, как их
-// расставил браузер (позиция, cover/fill, отражение)
+// ----- «Фотография» слайда: рисуем его картинки на холст так же,
+// как их расставил браузер (позиция, cover/fill, отражение, прозрачность) -----
+
 function isFlipped(el) {
   let flipped = false;
   for (let node = el; node && node !== bg; node = node.parentElement) {
@@ -149,20 +172,54 @@ function isFlipped(el) {
   return flipped;
 }
 
-function snapshot(slide, width, height, dpr) {
+// Размытое пятно дорого рисовать каждый раз — рисуем один раз и запоминаем
+let glowCache = null;
+
+function glowImage(width, height, dpr) {
+  const key = `${width}x${height}@${dpr}`;
+  if (glowCache && glowCache.key === key) return glowCache;
+  const pad = 180; // запас под размытие (3 × 60px)
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(width * dpr);
-  canvas.height = Math.round(height * dpr);
+  canvas.width = Math.round((width + pad * 2) * dpr);
+  canvas.height = Math.round((height + pad * 2) * dpr);
+  const ctx = canvas.getContext('2d');
+  const far = 100000;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  // Размытие делаем тенью: так работает во всех браузерах
+  ctx.shadowColor = ACCENT;
+  ctx.shadowBlur = 120 * dpr;
+  ctx.shadowOffsetX = far * dpr;
+  ctx.fillStyle = ACCENT;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(pad - far, pad, width, height, 50);
+  else ctx.rect(pad - far, pad, width, height);
+  ctx.fill();
+  glowCache = { key, canvas, pad };
+  return glowCache;
+}
+
+function snapshot(slide, width, height, dpr, canvas = document.createElement('canvas')) {
+  const w = Math.round(width * dpr);
+  const h = Math.round(height * dpr);
+  if (canvas.width !== w) canvas.width = w;
+  if (canvas.height !== h) canvas.height = h;
   const ctx = canvas.getContext('2d');
   const base = bg.getBoundingClientRect();
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.globalAlpha = 1;
   ctx.fillStyle = ACCENT;
   ctx.fillRect(0, 0, width, height);
 
+  // Страница чуть наклонена в пространстве — пересчитываем размеры обратно
+  // в «ровные», иначе наклон попал бы в картинку дважды
+  const kx = width / base.width;
+  const ky = height / base.height;
+
   slide.querySelectorAll('*').forEach((el) => {
-    const r = el.getBoundingClientRect();
-    const x = r.left - base.left;
-    const y = r.top - base.top;
+    const box = el.getBoundingClientRect();
+    const r = { width: box.width * kx, height: box.height * ky };
+    const x = (box.left - base.left) * kx;
+    const y = (box.top - base.top) * ky;
 
     if (el.tagName === 'IMG') {
       if (!el.complete || !el.naturalWidth) return;
@@ -187,18 +244,11 @@ function snapshot(slide, width, height, dpr) {
       }
       ctx.restore();
     } else if (el.classList.contains('hero__glow')) {
-      // Размытое пятно рисуем тенью: так работает во всех браузерах
-      const far = 100000;
+      const glow = glowImage(r.width, r.height, dpr);
       ctx.save();
       ctx.globalAlpha = 0.3;
-      ctx.shadowColor = ACCENT;
-      ctx.shadowBlur = 120 * dpr;
-      ctx.shadowOffsetX = far * dpr;
-      ctx.fillStyle = ACCENT;
-      ctx.beginPath();
-      if (ctx.roundRect) ctx.roundRect(x - far, y, r.width, r.height, 50);
-      else ctx.rect(x - far, y, r.width, r.height);
-      ctx.fill();
+      ctx.drawImage(glow.canvas, x - glow.pad, y - glow.pad,
+        r.width + glow.pad * 2, r.height + glow.pad * 2);
       ctx.restore();
     } else if (el.classList.contains('hero__light')) {
       // Пятно света на стене: осветление, как mix-blend-mode: screen
@@ -223,7 +273,7 @@ function snapshot(slide, width, height, dpr) {
   return canvas;
 }
 
-function createGlass() {
+function createRenderer() {
   const gl = glassCanvas.getContext('webgl2', { alpha: false, antialias: false });
   if (!gl) return null;
 
@@ -254,47 +304,63 @@ function createGlass() {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const u = {};
-  ['uA', 'uB', 'uRes', 'uT', 'uMix', 'uStrip', 'uDpr', 'uTime'].forEach((name) => {
+  ['uA', 'uB', 'uRes', 'uT', 'uMix', 'uStrip', 'uDpr', 'uClock'].forEach((name) => {
     u[name] = gl.getUniformLocation(program, name);
   });
   gl.uniform1i(u.uA, 0);
   gl.uniform1i(u.uB, 1);
 
   const textures = [gl.createTexture(), gl.createTexture()];
+  const shots = [document.createElement('canvas'), document.createElement('canvas')];
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
-  function upload(unit, image) {
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let texDpr = 1;
+
+  // mips — уменьшенные копии для размытия, нужны только во время смены
+  function upload(unit, image, mips) {
     gl.activeTexture(gl.TEXTURE0 + unit);
     gl.bindTexture(gl.TEXTURE_2D, textures[unit]);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-    gl.generateMipmap(gl.TEXTURE_2D);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    if (mips) gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mips ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
   return {
-    // Подготовка: размеры и «фотографии» двух слайдов
-    prepare(fromSlide, toSlide) {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const width = bg.clientWidth;
-      const height = bg.clientHeight;
+    // Размер холста — по размеру фона (проверяется каждый кадр)
+    fit() {
+      const w = bg.clientWidth;
+      const h = bg.clientHeight;
+      const d = Math.min(window.devicePixelRatio || 1, 2);
+      if (w === width && h === height && d === dpr) return;
+      width = w;
+      height = h;
+      dpr = d;
+      texDpr = Math.min(dpr, 1.5); // «фото» чуть мельче — меньше работы каждый кадр
       glassCanvas.width = Math.round(width * dpr);
       glassCanvas.height = Math.round(height * dpr);
       gl.viewport(0, 0, glassCanvas.width, glassCanvas.height);
-
-      const strip = Math.max(36, Math.round(width / 22)) * dpr;
       gl.uniform2f(u.uRes, glassCanvas.width, glassCanvas.height);
-      gl.uniform1f(u.uStrip, strip);
+      gl.uniform1f(u.uStrip, Math.max(36, Math.round(width / 22)) * dpr);
       gl.uniform1f(u.uDpr, dpr);
-
-      upload(0, snapshot(fromSlide, width, height, dpr));
-      upload(1, snapshot(toSlide, width, height, dpr));
     },
-    draw(t, seconds = 0) {
+    // Обычный режим: свежее «фото» текущего слайда
+    live(slide) {
+      upload(0, snapshot(slide, width, height, texDpr, shots[0]), false);
+    },
+    // Перед сменой: «фото» обоих слайдов
+    prepare(fromSlide, toSlide) {
+      upload(0, snapshot(fromSlide, width, height, texDpr, shots[0]), true);
+      upload(1, snapshot(toSlide, width, height, texDpr, shots[1]), true);
+    },
+    draw(t, clock) {
       gl.uniform1f(u.uT, t);
-      gl.uniform1f(u.uTime, seconds);
+      gl.uniform1f(u.uClock, clock);
       // Фото плавно растворяется одно в другом (прозрачностью)
       const m = Math.min(Math.max((t - 0.36) / 0.28, 0), 1);
       gl.uniform1f(u.uMix, m * m * (3 - 2 * m));
@@ -303,11 +369,11 @@ function createGlass() {
   };
 }
 
-let glass = null;
+let renderer = null;
 try {
-  glass = createGlass();
+  renderer = createRenderer();
 } catch (err) {
-  console.warn('Стекло недоступно, будет простая смена слайдов:', err);
+  console.warn('WebGL недоступен, фон будет обычным:', err);
 }
 
 
@@ -320,6 +386,11 @@ const delay = 9000;
 let current = 0;
 let timer;
 let busy = false;
+let live = false;   // фон рисуется на видеокарте
+let change = null;  // идущая смена слайдов: { to, elapsed, swapped }
+let clock = 0;
+let frameNo = 0;
+let lastFrame = 0;
 
 function setSlide(index) {
   slides.forEach((slide, i) => slide.classList.toggle('is-active', i === index));
@@ -334,46 +405,65 @@ function startTimer() {
   timer = setTimeout(() => show(current + 1), delay);
 }
 
-// Переход через стекло. Если стекло недоступно — просто плавная смена
-function transition(from, to) {
-  busy = true;
-  hero.classList.add('is-glass'); // небо замирает, чтобы «фото» совпало с экраном
+// Каждый кадр: волны полотна, а во время смены — ещё и стекло
+function frame(now) {
+  // Шаг не больше 50 мс: после скрытой вкладки всё продолжится, а не перескочит
+  const dt = Math.min(now - lastFrame, 50);
+  lastFrame = now;
+  clock += dt / 1000;
+  renderer.fit();
 
-  try {
-    if (!glass || reduceMotion.matches) throw new Error('no glass');
-    glass.prepare(slides[from], slides[to]);
-  } catch (err) {
-    hero.classList.remove('is-glass');
-    setSlide(to);
-    setTimeout(() => { busy = false; }, 700);
-    return;
-  }
-
-  glass.draw(0);
-  glassCanvas.classList.add('is-on');
-  let swapped = false;
-  let elapsed = 0;
-  let last = performance.now();
-
-  function frame(now) {
-    // Шаг не больше 50 мс: после скрытой вкладки анимация продолжится, а не перескочит
-    elapsed += Math.min(now - last, 50);
-    last = now;
-    const t = Math.min(elapsed / GLASS_TIME, 1);
-    glass.draw(t, elapsed / 1000);
-    if (t >= SWAP_AT && !swapped) {
-      swapped = true;
-      setSlide(to);
+  if (change) {
+    change.elapsed += dt;
+    const t = Math.min(change.elapsed / GLASS_TIME, 1);
+    if (t >= SWAP_AT && !change.swapped) {
+      change.swapped = true;
+      setSlide(change.to);
     }
-    if (t < 1) {
-      requestAnimationFrame(frame);
-    } else {
-      glassCanvas.classList.remove('is-on');
+    renderer.draw(t, clock);
+    if (t >= 1) {
+      change = null;
       hero.classList.remove('is-glass');
+      renderer.live(slides[current]);
       busy = false;
     }
+  } else {
+    // Облака и свет двигаются медленно — обновляем «фото» каждый третий кадр
+    if (frameNo++ % 3 === 0) renderer.live(slides[current]);
+    renderer.draw(0, clock);
   }
   requestAnimationFrame(frame);
+}
+
+function startLive() {
+  if (!renderer || reduceMotion.matches) return;
+  try {
+    renderer.fit();
+    renderer.live(slides[current]);
+    renderer.draw(0, 0);
+  } catch (err) {
+    // Например, сайт открыт файлом, а не через Live Server — браузер не даёт
+    // «фотографировать» картинки. Тогда фон остаётся обычным
+    console.warn('Живой фон недоступен:', err);
+    return;
+  }
+  live = true;
+  glassCanvas.classList.add('is-on');
+  lastFrame = performance.now();
+  requestAnimationFrame(frame);
+}
+
+// Смена слайда: через стекло, а без видеокарты — просто плавно
+function transition(from, to) {
+  busy = true;
+  if (live) {
+    hero.classList.add('is-glass'); // движение замирает, чтобы «фото» совпало с экраном
+    renderer.prepare(slides[from], slides[to]);
+    change = { to, elapsed: 0, swapped: false };
+  } else {
+    setSlide(to);
+    setTimeout(() => { busy = false; }, 700);
+  }
 }
 
 function show(index, animate = true) {
@@ -419,3 +509,7 @@ hero.addEventListener('touchend', (e) => {
 });
 
 show(0, false);
+
+// Живой фон включаем, когда загрузились все картинки
+if (document.readyState === 'complete') startLive();
+else window.addEventListener('load', startLive);

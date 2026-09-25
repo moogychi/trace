@@ -38,6 +38,28 @@ a {
 .hero {
   /* Внутри .hero размеры считаются от ширины: 1px макета = --k */
   container-type: inline-size;
+  overflow: hidden;
+  background: var(--accent);
+  perspective: 1600px;
+}
+
+/* Экран — как парящий лист: очень медленно покачивается в пространстве,
+   то один край чуть приподнимается, то другой. Фон (картинки и холст) чуть
+   крупнее экрана, чтобы при наклоне не показывались края; меню и текст —
+   в натуральном размере */
+@keyframes sheet-float {
+  0%, 100% {
+    transform: rotateX(1.2deg) rotateY(-1.8deg);
+  }
+  25% {
+    transform: rotateX(-0.6deg) rotateY(0.6deg);
+  }
+  50% {
+    transform: rotateX(-1.3deg) rotateY(1.9deg);
+  }
+  75% {
+    transform: rotateX(0.5deg) rotateY(-0.4deg);
+  }
 }
 
 .hero__inner {
@@ -46,9 +68,10 @@ a {
   /* Как в макете (820 при ширине 1440), но не выше окна браузера,
      чтобы «ТРЕЙС» не уезжало за край на больших мониторах */
   height: max(560px, min(calc(820 * var(--k)), 100svh));
-  overflow: hidden;
+  /* Лишнее обрезает .hero снаружи: фону можно выступать за край при наклоне */
   color: var(--white);
   background: var(--accent);
+  animation: sheet-float 22s ease-in-out infinite;
 }
 
 .hero__bg,
@@ -58,18 +81,23 @@ a {
   inset: 0;
 }
 
-/* Слайды плавно сменяют друг друга */
-/* Обрезаем фон по краям экрана, иначе фильтр стекла считает размер
-   вместе с выступающими за край картинками и не накрывает низ */
+/* Картинки слайдов обрезаются по краям фона */
 .hero__bg {
   overflow: hidden;
   contain: paint;
 }
 
+/* Фон и холст с запасом 3% — при наклоне листа края не показываются */
+.hero__bg,
+.hero__glass {
+  transform: scale(1.03);
+}
+
+/* Слайды плавно сменяют друг друга */
 .hero__slide {
   overflow: hidden;
   opacity: 0;
-  /* Картинка меняется, пока закрыта «стеклом» — см. glassRun в index.html */
+  /* Картинка меняется под холстом со стеклом — см. transition в script.js */
   transition: opacity 0.7s ease-in-out;
 }
 
@@ -138,7 +166,8 @@ a {
   animation-play-state: paused;
 }
 
-/* Холст со стеклом (рисуется в script.js), виден только во время смены */
+/* Холст с живым фоном и стеклом (рисуется в script.js). Появляется плавно,
+   когда загрузились картинки; без WebGL остаётся скрытым — виден обычный фон */
 .hero__glass {
   position: absolute;
   inset: 0;
@@ -146,10 +175,14 @@ a {
   height: 100%;
   pointer-events: none;
   visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.8s ease, visibility 0s 0.8s;
 }
 
 .hero__glass.is-on {
   visibility: visible;
+  opacity: 1;
+  transition: opacity 0.8s ease;
 }
 
 .hero__tower {
@@ -597,8 +630,9 @@ button.hero__step:not(.is-active):hover {
   }
 }
 
-/* Если в системе просят меньше анимаций — небо, свет на стене и точка стоят на месте */
+/* Если в системе просят меньше анимаций — экран, небо, свет на стене и точка стоят на месте */
 @media (prefers-reduced-motion: reduce) {
+  .hero__inner,
   .hero__sky img,
   .hero__light,
   .header__action-icon img,
