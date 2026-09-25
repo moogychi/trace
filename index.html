@@ -179,6 +179,11 @@
         </h2>
       </div>
 
+      <!-- Фото, которое по скроллу разворачивается на весь экран (включает script.js) -->
+      <div class="dominant__expand" aria-hidden="true">
+        <img src="img/dominant-full.jpg" alt="" loading="lazy" decoding="async">
+      </div>
+
       <!-- Линия от выделенных слов к центру блока -->
       <svg class="dominant__link" viewBox="0 0 491 135" preserveAspectRatio="none" aria-hidden="true">
         <path class="dominant__link-main" d="M0 134.5H439.621L440.198 0.5"/>
@@ -200,8 +205,8 @@
   <!-- Полноэкранное меню (десктоп): белая шторка сверху, под ней полоса стекла -->
   <div class="menu" id="menu" aria-hidden="true">
     <div class="menu__glass">
-      <!-- Видео подгружается при первом открытии меню, до этого — картинка стекла -->
-      <video class="menu__video" muted loop playsinline preload="none" data-src="img/color.mp4" aria-hidden="true"></video>
+      <!-- Живые рёбра стекла рисует видеокарта (script.js); без неё видна картинка стекла -->
+      <canvas class="menu__canvas" aria-hidden="true"></canvas>
     </div>
     <div class="menu__panel">
       <!-- Верхняя строка — на тех же местах, что на первом экране, только тёмная -->

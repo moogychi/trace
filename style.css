@@ -782,6 +782,36 @@ button.hero__step:not(.is-active):hover {
   text-transform: uppercase;
 }
 
+/* Фото, разворачивающееся по скроллу на весь экран. Лежит поверх блока
+   на всю высоту экрана; script.js подгоняет его размер и обрезку под маленькую
+   рамку и по скроллу разворачивает. Без скрипта — обычное маленькое фото */
+.dominant__expand {
+  display: none;
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dominant__expand img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 8%; /* лицо в кадре и в рамке, и на весь экран */
+}
+
+.dominant.is-expandable .dominant__expand {
+  display: block;
+}
+
+.dominant.is-expandable .dominant__photo {
+  visibility: hidden;
+}
+
 /* Линия от выделенных слов к центру и квадратик на стыке */
 .dominant__link {
   position: absolute;
@@ -850,15 +880,19 @@ button.hero__step:not(.is-active):hover {
     #1e4646;
 }
 
-/* Видео стекла — фон всего меню (из-под белой части видна его нижняя часть,
-   как в макете). Пока оно не загрузилось, видна картинка стекла под ним */
-.menu__video {
+/* Живые рёбра стекла (рисует script.js на весь слой, из-под белой части видна
+   нижняя часть). Пока не нарисованы — видна картинка стекла под ними */
+.menu__canvas {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 50% 100%;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.menu__canvas.is-live {
+  opacity: 1;
 }
 
 .menu__panel {

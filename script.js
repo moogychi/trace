@@ -590,10 +590,55 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   reveal(photoFrame, photo, 1.35);
   parallax(photoFrame, photo, '-7%', '7%');
 
-  const dominantFrame = document.querySelector('.dominant__photo');
-  const dominantPhoto = dominantFrame.querySelector('img');
-  reveal(dominantFrame, dominantPhoto, 1.35);
-  parallax(dominantFrame, dominantPhoto, '-7%', '7%');
+  // Блок «Локация»: пока листаешь, блок стоит на месте, а фото из маленькой
+  // рамки разворачивается на весь экран; заголовок и текст плавно уходят.
+  // Листаешь назад — фото сворачивается обратно
+  const dominant = document.querySelector('.dominant');
+  const smallPhoto = dominant.querySelector('.dominant__photo');
+  const expand = dominant.querySelector('.dominant__expand');
+  dominant.classList.add('is-expandable');
+
+  // Стартовое положение: слой на весь экран уменьшен и обрезан так,
+  // что видно ровно маленькую рамку
+  const startOf = () => {
+    const box = dominant.getBoundingClientRect();
+    const r = smallPhoto.getBoundingClientRect();
+    const w = expand.offsetWidth;
+    const h = expand.offsetHeight;
+    const scale = Math.max(r.width / w, r.height / h);
+    const insetX = (w - r.width / scale) / 2;
+    const insetY = (h - r.height / scale) / 2;
+    return {
+      scale,
+      x: r.left - box.left + r.width / 2 - w / 2,
+      y: r.top - box.top + r.height / 2 - h / 2,
+      clipPath: `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`,
+    };
+  };
+
+  gsap.timeline({
+    scrollTrigger: {
+      trigger: dominant,
+      start: 'top top',
+      end: '+=130%',
+      pin: true,
+      scrub: 1,
+      invalidateOnRefresh: true,
+    },
+  })
+    .fromTo(expand,
+      {
+        x: () => startOf().x,
+        y: () => startOf().y,
+        scale: () => startOf().scale,
+        clipPath: () => startOf().clipPath,
+        transformOrigin: '50% 50%',
+      },
+      { x: 0, y: 0, scale: 1, clipPath: 'inset(0px 0px 0px 0px)', ease: 'power1.inOut', duration: 1 }, 0)
+    // остальное уходит (через filter, чтобы не мешать анимациям появления)
+    .fromTo('.dominant__center, .dominant__text, .dominant__link, .dominant__dot, .dominant .label, .dominant__address',
+      { filter: 'opacity(1)' },
+      { filter: 'opacity(0)', ease: 'none', duration: 0.4 }, 0);
 
   // Блок «Локация»: текст проявляется, бирюзовая плашка прочерчивается
   // под словами «7 трлн рублей инвестиций», от неё к центру блока бежит линия,
@@ -680,7 +725,7 @@ const menuGlass = menuEl.querySelector('.menu__glass');
 const menuLinks = [...menuEl.querySelectorAll('.menu__link')];
 const menuPhotos = [...menuEl.querySelectorAll('.menu__pic')];
 const menuFade = menuEl.querySelectorAll('.menu__link, .menu__photo, .menu__contacts');
-const menuVideo = menuEl.querySelector('.menu__video');
+const menuCanvas = menuEl.querySelector('.menu__canvas');
 let menuTl = null;
 let menuPhotoIndex = menuLinks.findIndex((link) => link.classList.contains('is-active'));
 let menuPhotoZ = 1;
@@ -711,9 +756,7 @@ function idleZoom(img, from = 1.18) {
 
 function openFullMenu() {
   if (!menuTl) menuTl = buildMenuTimeline();
-  // Видео стекла грузим только при первом открытии — не тормозит загрузку сайта
-  if (!menuVideo.src) menuVideo.src = menuVideo.dataset.src;
-  menuVideo.play().catch(() => {});
+  if (menuGlassFx) menuGlassFx.start();
   idleZoom(menuPhotos[menuPhotoIndex].querySelector('img'));
   menuEl.classList.add('is-open');
   menuEl.setAttribute('aria-hidden', 'false');
@@ -731,7 +774,7 @@ function closeFullMenu() {
   // закрытие — то же движение назад, чуть быстрее
   menuTl.timeScale(1.4).reverse().eventCallback('onReverseComplete', () => {
     menuEl.classList.remove('is-open');
-    menuVideo.pause();
+    if (menuGlassFx) menuGlassFx.stop();
     menuEl.setAttribute('aria-hidden', 'true');
   });
 }
@@ -760,3 +803,152 @@ menuLinks.forEach((link, i) => {
     idleZoom(img, 1.3);
   });
 });
+
+
+// ===== Живое стекло в меню (WebGL) =====
+//
+// Переливающийся бирюзовый цвет за ребристым стеклом: рёбра-линзы отражают
+// и растягивают цвет, по ним пробегают блики. Рисуется только пока меню
+// открыто. Картинка уменьшена (0.6) — текстура размытая, так легче видеокарте.
+
+const MENU_GLASS_FRAGMENT = `
+precision mediump float;
+uniform vec2 uRes;
+uniform float uTime;
+varying vec2 vUv;
+
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), u.x),
+             mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 4; i++) {
+    v += a * noise(p);
+    p *= 2.02;
+    a *= 0.5;
+  }
+  return v;
+}
+
+// Цвета как в макете: от глубокого бирюзового до светлой морской волны
+vec3 palette(float t) {
+  vec3 c1 = vec3(0.06, 0.19, 0.20);
+  vec3 c2 = vec3(0.19, 0.41, 0.42);
+  vec3 c3 = vec3(0.44, 0.69, 0.68);
+  vec3 c4 = vec3(0.80, 0.92, 0.90);
+  t = clamp(t, 0.0, 1.0);
+  if (t < 0.4) return mix(c1, c2, t / 0.4);
+  if (t < 0.8) return mix(c2, c3, (t - 0.4) / 0.4);
+  return mix(c3, c4, (t - 0.8) / 0.2);
+}
+
+void main() {
+  vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
+  float aspect = uRes.x / uRes.y;
+
+  // Рёбра: около 52 на ширину экрана
+  float ribs = 52.0;
+  float x = uv.x * ribs;
+  float i = floor(x);
+  float local = fract(x);
+  float nx = local * 2.0 - 1.0;
+
+  // Ребро — линза: цвет внутри отражён и растянут, у каждого ребра своё смещение
+  float sx = (i + 0.5 - nx * 0.9 + sin(i * 1.7) * 0.3) / ribs;
+
+  // Цвет медленно течёт; по вертикали растянут — получаются полосы-переливы
+  float t = uTime * 0.06;
+  vec2 p = vec2(sx * aspect * 2.2, uv.y * 0.55);
+  float f = (fbm(p + vec2(t, -t * 0.7)) + 0.35 * fbm(p * 2.3 + vec2(-t * 1.3, t))) / 1.35;
+
+  // Волна яркости идёт наискось через рёбра — зигзаги, как на макете
+  float zig = sin(uv.y * 6.0 + abs(nx) * 2.0 + i * 0.9 + uTime * 0.8) * 0.5 + 0.5;
+  float v = mix(f, f * 0.7 + zig * 0.3, 0.5);
+  vec3 col = palette(pow(v, 1.3) * 1.25);
+
+  // Объём ребра, блик и лёгкий стык
+  float bulge = sqrt(max(0.0, 1.0 - nx * nx));
+  col *= mix(0.74, 1.08, bulge);
+  float spec = smoothstep(0.55, 0.75, local) * (1.0 - smoothstep(0.75, 0.9, local));
+  col += spec * 0.1 * (0.5 + 0.5 * sin(uTime * 0.9 + i * 0.6 + uv.y * 3.0));
+  col *= 1.0 - (1.0 - smoothstep(0.0, 0.06, local)) * 0.2;
+
+  gl_FragColor = vec4(col, 1.0);
+}`;
+
+function createMenuGlass(canvas) {
+  const gl = canvas.getContext('webgl', { alpha: false, antialias: false });
+  if (!gl) return null;
+
+  const compile = (type, source) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  };
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER,
+    'attribute vec2 aPos; varying vec2 vUv; void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }'));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, MENU_GLASS_FRAGMENT));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(program, 'aPos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+  const uRes = gl.getUniformLocation(program, 'uRes');
+  const uTime = gl.getUniformLocation(program, 'uTime');
+
+  let running = false;
+  let time = 0;
+  let last = 0;
+
+  function frame(now) {
+    if (!running) return;
+    time += Math.min(now - last, 50) / 1000;
+    last = now;
+    const w = Math.round(canvas.clientWidth * 0.6);
+    const h = Math.round(canvas.clientHeight * 0.6);
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+    gl.uniform2f(uRes, w, h);
+    gl.uniform1f(uTime, time);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    canvas.classList.add('is-live');
+    requestAnimationFrame(frame);
+  }
+
+  return {
+    start() {
+      if (running) return;
+      running = true;
+      last = performance.now();
+      requestAnimationFrame(frame);
+    },
+    stop() {
+      running = false;
+    },
+  };
+}
+
+let menuGlassFx = null;
+try {
+  menuGlassFx = reduceMotion.matches ? null : createMenuGlass(menuCanvas);
+} catch (err) {
+  console.warn('Живое стекло в меню недоступно, будет картинка:', err);
+}
