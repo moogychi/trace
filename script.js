@@ -115,7 +115,7 @@ void main() {
   // Размытие: лёгкая матовость стекла + умеренная вспышка на смене фото
   // (к центру экрана сильнее)
   float centre = smoothstep(0.0, 1.0, 1.0 - abs(2.0 * vUv.x - 1.0));
-  float radius = (power * 4.0 + blurCurve(uT) * mix(28.0, 40.0, centre) * mix(0.8, 1.0, power)) * uDpr;
+  float radius = (power * 3.6 + blurCurve(uT) * mix(25.0, 36.0, centre) * mix(0.8, 1.0, power)) * uDpr;
 
   vec3 col;
   if (uMix <= 0.0) col = blurred(uA, uv, radius);
@@ -177,6 +177,7 @@ function snapshot(slide, width, height, dpr) {
         sy = (nh - sh) / 2;
       }
       ctx.save();
+      ctx.globalAlpha = parseFloat(getComputedStyle(el).opacity);
       if (isFlipped(el)) {
         ctx.translate(x + r.width, y);
         ctx.scale(-1, 1);
@@ -198,6 +199,18 @@ function snapshot(slide, width, height, dpr) {
       if (ctx.roundRect) ctx.roundRect(x - far, y, r.width, r.height, 50);
       else ctx.rect(x - far, y, r.width, r.height);
       ctx.fill();
+      ctx.restore();
+    } else if (el.classList.contains('hero__light')) {
+      // Пятно света на стене: осветление, как mix-blend-mode: screen
+      const g = ctx.createLinearGradient(x, 0, x + r.width, 0);
+      g.addColorStop(0, 'rgba(255,255,255,0)');
+      g.addColorStop(0.5, 'rgba(255,255,255,0.22)');
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.save();
+      ctx.globalAlpha = parseFloat(getComputedStyle(el).opacity);
+      ctx.globalCompositeOperation = 'screen';
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, r.width, r.height);
       ctx.restore();
     } else if (el.classList.contains('hero__shade')) {
       const g = ctx.createLinearGradient(0, y, 0, y + r.height);

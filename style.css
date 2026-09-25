@@ -98,14 +98,19 @@ a {
   height: 100%;
 }
 
-/* Небо плывёт вверх в ровном темпе. Каждый раз, когда слайд открывается,
-   движение начинается заново (под стеклом, поэтому незаметно) */
-.hero__sky img:nth-child(3) {
-  transform: scale(1.4) translate3d(0, 12%, 0);
+/* Небо без конца плывёт вверх. Облака — два одинаковых слоя со сдвигом на
+   полцикла: верхний плавно появляется и исчезает, прикрывая момент, когда
+   нижний начинает путь заново. Поэтому движение непрерывное */
+.hero__clouds {
+  transform: scale(1.4);
+  animation: sky-rise 24s linear infinite;
 }
 
-.hero__slide.is-active .hero__sky img:nth-child(3) {
-  animation: sky-rise 24s linear forwards;
+.hero__clouds + .hero__clouds {
+  animation:
+    sky-rise 24s linear infinite,
+    clouds-fade 24s linear infinite;
+  animation-delay: -12s;
 }
 
 @keyframes sky-rise {
@@ -117,8 +122,19 @@ a {
   }
 }
 
-/* Во время смены слайда небо замирает — так «фото» для стекла совпадает с экраном */
-.hero.is-glass .hero__sky img {
+@keyframes clouds-fade {
+  0%, 100% {
+    opacity: 0;
+  }
+  15%, 85% {
+    opacity: 1;
+  }
+}
+
+/* Движение на скрытом слайде и во время смены стоит на паузе: при возвращении
+   продолжается с того же места, а «фото» для стекла совпадает с экраном */
+.hero__slide:not(.is-active) *,
+.hero.is-glass .hero__slide * {
   animation-play-state: paused;
 }
 
@@ -175,10 +191,12 @@ a {
   max-width: none;
 }
 
+/* Глубина: стена с тенью медленно смещается вбок, девушка чуть приближается */
 .hero__wall {
   inset: 0;
   width: 100%;
   height: 100%;
+  animation: wall-drift 28s ease-in-out infinite alternate;
 }
 
 .hero__woman {
@@ -187,6 +205,53 @@ a {
   width: 50.84%;
   height: 90.44%;
   transform: scaleX(-1);
+  transform-origin: 50% 100%;
+  animation: woman-near 28s ease-in-out infinite alternate;
+}
+
+@keyframes wall-drift {
+  from {
+    transform: scale(1.06) translateX(1.5%);
+  }
+  to {
+    transform: scale(1.06) translateX(-2.5%);
+  }
+}
+
+@keyframes woman-near {
+  from {
+    transform: scale(-1, 1);
+  }
+  to {
+    transform: scale(-1.045, 1.045);
+  }
+}
+
+/* Мягкое пятно света медленно проходит по стене (за девушкой) */
+.hero__light {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30%;
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+  mix-blend-mode: screen;
+  animation: light-pass 18s ease-in-out infinite;
+}
+
+@keyframes light-pass {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  20%, 80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(333%);
+    opacity: 0;
+  }
 }
 
 /* ----- Шапка ----- */
@@ -554,9 +619,12 @@ button.hero__step:not(.is-active):hover {
   }
 }
 
-/* Если в системе просят меньше анимаций — небо и точка стоят на месте */
+/* Если в системе просят меньше анимаций — небо, второй слайд и точка стоят на месте */
 @media (prefers-reduced-motion: reduce) {
   .hero__sky img,
+  .hero__wall,
+  .hero__woman,
+  .hero__light,
   .header__action-icon img,
   .header__action-icon::before,
   .header__action-icon::after {
