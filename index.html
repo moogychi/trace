@@ -11,6 +11,17 @@
 </head>
 <body>
 
+  <!-- Волна для всей страницы (script.js): карта волн плывёт, страница мягко колышется -->
+  <svg class="visually-hidden" aria-hidden="true">
+    <filter id="page-wave" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feImage class="wave-map" result="waves" preserveAspectRatio="none"/>
+      <feImage class="wave-edges" result="edges" preserveAspectRatio="none"/>
+      <!-- У краёв окна волна затухает: map = waves × edges + 0.5 × (1 − edges) -->
+      <feComposite in="waves" in2="edges" operator="arithmetic" k1="1" k2="0" k3="-0.5" k4="0.5" result="map"/>
+      <feDisplacementMap in="SourceGraphic" in2="map" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
   <!-- Первый экран -->
   <section class="hero">
     <div class="hero__inner">

@@ -419,3 +419,106 @@ hero.addEventListener('touchend', (e) => {
 });
 
 show(0, false);
+
+
+// ===== Вся страница мягко колышется, как ткань =====
+//
+// Карта волн — картинка с плавными волнами (красный канал — сдвиг по
+// горизонтали, зелёный — по вертикали), чуть больше страницы. Она медленно
+// плывёт по диагонали, и браузер сдвигает по ней каждую точку страницы.
+// Волны повторяются через WAVE_PERIOD пикселей, поэтому карту можно
+// бесконечно сдвигать по кругу без скачков. У краёв окна волна затухает,
+// чтобы по краям не появлялись пустые полоски.
+
+const WAVE_PERIOD = 640;      // длина волны, px — чем больше, тем положе волны
+const WAVE_SHIFT = 18;        // сила изгиба: наибольший сдвиг ±9px
+const WAVE_EDGE = 60;         // ширина затухания у краёв, px
+const WAVE_SPEED = [34, 22];  // скорость волн, px/с (вбок, вниз)
+const WAVE_SCALE = 4;         // карты считаем в 4 раза мельче — их всё равно растягивают
+
+const waveFilter = document.querySelector('#page-wave');
+const waveMap = waveFilter.querySelector('.wave-map');
+const waveEdges = waveFilter.querySelector('.wave-edges');
+const waveShift = waveFilter.querySelector('feDisplacementMap');
+
+function waveCanvas(w, h) {
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(w / WAVE_SCALE);
+  canvas.height = Math.ceil(h / WAVE_SCALE);
+  return canvas;
+}
+
+// Плавные волны, больше страницы на один период
+function drawWaveMap(w, h) {
+  const canvas = waveCanvas(w + WAVE_PERIOD, h + WAVE_PERIOD);
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(canvas.width, canvas.height);
+  const k = (2 * Math.PI) / WAVE_PERIOD;
+  for (let j = 0; j < canvas.height; j++) {
+    const y = j * WAVE_SCALE;
+    for (let i = 0; i < canvas.width; i++) {
+      const x = i * WAVE_SCALE;
+      const r = 0.65 * Math.sin(k * (x + y)) + 0.35 * Math.sin(k * (2 * y - x) + 1.3);
+      const g = 0.65 * Math.sin(k * (x - 2 * y) + 0.7) + 0.35 * Math.sin(k * (x + y) + 2.4);
+      const p = (j * canvas.width + i) * 4;
+      img.data[p] = 128 + 127 * r;
+      img.data[p + 1] = 128 + 127 * g;
+      img.data[p + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  waveMap.setAttribute('href', canvas.toDataURL());
+  waveMap.setAttribute('width', w + WAVE_PERIOD);
+  waveMap.setAttribute('height', h + WAVE_PERIOD);
+}
+
+// Маска краёв: белая внутри, к краям страницы плавно чернеет
+function drawWaveEdges(w, h) {
+  const canvas = waveCanvas(w, h);
+  const ctx = canvas.getContext('2d');
+  const e = WAVE_EDGE / WAVE_SCALE;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.globalCompositeOperation = 'multiply';
+  [[0, 0, e, 0], [canvas.width, 0, canvas.width - e, 0],
+   [0, 0, 0, e], [0, canvas.height, 0, canvas.height - e]].forEach(([x0, y0, x1, y1]) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, '#000');
+    g.addColorStop(1, '#fff');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  });
+  waveEdges.setAttribute('href', canvas.toDataURL());
+  waveEdges.setAttribute('width', w);
+  waveEdges.setAttribute('height', h);
+}
+
+let waveSize = '';
+
+function fitWave() {
+  const w = document.body.offsetWidth;
+  const h = document.body.offsetHeight;
+  if (waveSize === `${w}x${h}`) return;
+  waveSize = `${w}x${h}`;
+  drawWaveMap(w, h);
+  drawWaveEdges(w, h);
+}
+
+function waveFrame(now) {
+  const s = now / 1000;
+  // Сдвигаем карту по кругу в пределах одного периода — волны плывут без конца
+  waveMap.setAttribute('x', -((s * WAVE_SPEED[0]) % WAVE_PERIOD));
+  waveMap.setAttribute('y', -((s * WAVE_SPEED[1]) % WAVE_PERIOD));
+  requestAnimationFrame(waveFrame);
+}
+
+// Safari плохо поддерживает такие фильтры на странице — там волну не включаем
+const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+if (!reduceMotion.matches && !isSafari) {
+  waveShift.setAttribute('scale', WAVE_SHIFT);
+  fitWave();
+  new ResizeObserver(fitWave).observe(document.body);
+  document.body.style.filter = 'url(#page-wave)';
+  requestAnimationFrame(waveFrame);
+}
