@@ -512,6 +512,16 @@ button.hero__step:not(.is-active):hover {
 .comfort__line {
   display: block;
   white-space: nowrap;
+  /* Строка обрезана по краям — буквы выезжают из-под нижнего края.
+     Запас сверху и снизу, чтобы не срезать «Й» и запятые */
+  overflow: hidden;
+  padding: 0.12em 0 0.08em;
+  margin: -0.12em 0 -0.08em;
+}
+
+/* Буквы заголовков (разбивает script.js) */
+.char {
+  display: inline-block;
 }
 
 /* ===== Блок 2: о проекте ===== */
@@ -544,6 +554,16 @@ button.hero__step:not(.is-active):hover {
   top: calc(327 * var(--k));
   width: calc(204 * var(--k));
   height: calc(267 * var(--k));
+  overflow: hidden;
+}
+
+/* Фото выше рамки на 20% — запас для параллакса при скролле */
+.about__photo img {
+  position: absolute;
+  left: 0;
+  top: -10%;
+  width: 100%;
+  height: 120%;
   object-fit: cover;
   object-position: 50% 100%;
 }
@@ -594,10 +614,27 @@ button.hero__step:not(.is-active):hover {
 
 /* Строка с цифрой: рамка вокруг значения, линия снизу, квадратик в углу */
 .fact {
+  position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  border-bottom: 1px solid var(--line);
+}
+
+/* Линия под строкой — отдельный элемент, чтобы её можно было «прочертить» */
+.fact__rule {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  transform-origin: left;
+}
+
+/* Цифра набегает от 0 — ширину держит script.js, чтобы рамка не прыгала */
+.fact__num {
+  display: inline-block;
+  text-align: right;
 }
 
 .fact__value {

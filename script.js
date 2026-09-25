@@ -474,3 +474,109 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
     else target.scrollIntoView({ behavior: 'smooth' });
   });
 });
+
+
+// ===== Появление блоков при скролле (GSAP + ScrollTrigger) =====
+//
+// Всё проигрывается один раз, когда блок доходит до нижней части экрана.
+// Начальное (скрытое) состояние задаёт скрипт: если GSAP не загрузился,
+// всё просто видно сразу.
+
+// Разбиваем строку заголовка на буквы: каждая — отдельный span
+function splitChars(line) {
+  const text = line.textContent.trim();
+  line.textContent = '';
+  const chars = [];
+  [...text].forEach((ch) => {
+    if (ch === ' ') {
+      line.append(' ');
+      return;
+    }
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = ch;
+    line.append(span);
+    chars.push(span);
+  });
+  return chars;
+}
+
+if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
+  const once = (trigger, start = 'top 80%') => ({ trigger, start, once: true });
+
+  // Заголовки: буквы по очереди выезжают снизу из-под края строки
+  document.querySelectorAll('.about__title, .comfort__title').forEach((title) => {
+    const chars = [...title.querySelectorAll('.about__line, .comfort__line')].flatMap(splitChars);
+    gsap.from(chars, {
+      yPercent: 110,
+      duration: 0.7,
+      ease: 'power3.out',
+      stagger: 0.014,
+      scrollTrigger: once(title),
+    });
+  });
+
+  // Метка раздела и абзац — мягко поднимаются и проявляются
+  document.querySelectorAll('.about .label, .about__text').forEach((el) => {
+    gsap.from(el, {
+      y: 24,
+      opacity: 0,
+      duration: 1,
+      ease: 'power3.out',
+      scrollTrigger: once(el, 'top 90%'),
+    });
+  });
+
+  // Картинки: шторка снизу вверх, фото внутри чуть отдаляется,
+  // дальше при скролле фото движется медленнее страницы (параллакс)
+  const reveal = (frame, img, zoomFrom) => {
+    gsap.timeline({ scrollTrigger: once(frame) })
+      .fromTo(frame,
+        { clipPath: 'inset(100% 0% 0% 0%)' },
+        { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.4, ease: 'power3.inOut' })
+      .from(img, { scale: zoomFrom, duration: 1.8, ease: 'power3.out' }, 0);
+  };
+  const parallax = (frame, img, from, to) => {
+    gsap.fromTo(img, { y: from }, {
+      y: to,
+      ease: 'none',
+      scrollTrigger: { trigger: frame, start: 'top bottom', end: 'bottom top', scrub: true },
+    });
+  };
+
+  const photoFrame = document.querySelector('.about__photo');
+  const photo = photoFrame.querySelector('img');
+  reveal(photoFrame, photo, 1.25);
+  parallax(photoFrame, photo, '-8%', '8%');
+
+  const media = document.querySelector('.comfort__media');
+  const towers = media.querySelector('.comfort__towers');
+  gsap.set(towers, { transformOrigin: '50% 100%' });
+  reveal(media, towers, 1.15);
+  parallax(media, towers, 60, -60);
+  parallax(media, media.querySelector('.comfort__sky'), 25, -25); // небо медленнее — глубина
+
+  // Цифры: строки по очереди — рамка прорисовывается слева направо,
+  // цифра набегает от 0, линия под строкой прочерчивается, подпись проявляется
+  document.querySelectorAll('.fact').forEach((fact, i) => {
+    const value = fact.querySelector('.fact__value');
+    const num = fact.querySelector('.fact__num');
+    const target = Number(num.textContent);
+    // Ширина конечного числа (меряем после загрузки шрифта) — рамка не прыгает
+    document.fonts.ready.then(() => { num.style.minWidth = `${num.offsetWidth}px`; });
+    const counter = { n: 0 };
+
+    gsap.timeline({ scrollTrigger: once(fact.parentElement, 'top 85%'), delay: i * 0.15 })
+      .from(fact.querySelector('.fact__rule'), { scaleX: 0, duration: 1.2, ease: 'power3.inOut' })
+      .fromTo(value,
+        { clipPath: 'inset(0% 100% 0% 0%)' },
+        { clipPath: 'inset(0% -12px 0% 0%)', duration: 1, ease: 'power3.out' }, 0.1)
+      .fromTo(counter, { n: 0 }, {
+        n: target,
+        duration: 1.4,
+        ease: 'power2.out',
+        onUpdate: () => { num.textContent = Math.round(counter.n); },
+      }, 0.1)
+      .from(fact.querySelector('.fact__label'), { y: 12, opacity: 0, duration: 0.8, ease: 'power3.out' }, 0.4);
+  });
+}
