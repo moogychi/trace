@@ -67,8 +67,8 @@ float ease(float x) {
   return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
 }
 
-// Размытие — короткая вспышка только вокруг смены фото (0.32–0.66),
-// чтобы шов был незаметен. Пока рёбра наезжают и расходятся, фото под ними видно
+// Размытие — вспышка вокруг середины перехода (0.32–0.66), смягчает смену фото.
+// Пока рёбра наезжают и расходятся, фото под ними видно
 float blurCurve(float t) {
   if (t < 0.5) return 0.5 - 0.5 * cos(PI * clamp((t - 0.32) / 0.18, 0.0, 1.0));
   return 0.5 + 0.5 * cos(PI * clamp((t - 0.5) / 0.16, 0.0, 1.0));
@@ -112,10 +112,10 @@ void main() {
   float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * 0.8 * power;
   vec2 uv = vUv + vec2(shift / uRes.x, 0.0);
 
-  // Размытие: лёгкая матовость стекла + короткая сильная вспышка на смене фото
-  // (к центру экрана сильнее). На пике картинку не различить — там и меняется фото
+  // Размытие: лёгкая матовость стекла + умеренная вспышка на смене фото
+  // (к центру экрана сильнее)
   float centre = smoothstep(0.0, 1.0, 1.0 - abs(2.0 * vUv.x - 1.0));
-  float radius = (power * 5.0 + blurCurve(uT) * mix(70.0, 95.0, centre) * mix(0.8, 1.0, power)) * uDpr;
+  float radius = (power * 5.0 + blurCurve(uT) * mix(35.0, 50.0, centre) * mix(0.8, 1.0, power)) * uDpr;
 
   vec3 col;
   if (uMix <= 0.0) col = blurred(uA, uv, radius);
@@ -282,8 +282,8 @@ function createGlass() {
     draw(t, seconds = 0) {
       gl.uniform1f(u.uT, t);
       gl.uniform1f(u.uTime, seconds);
-      // Фото меняется плавно в самой размытой части перехода
-      const m = Math.min(Math.max((t - 0.44) / 0.12, 0), 1);
+      // Фото плавно растворяется одно в другом (прозрачностью)
+      const m = Math.min(Math.max((t - 0.3) / 0.4, 0), 1);
       gl.uniform1f(u.uMix, m * m * (3 - 2 * m));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
