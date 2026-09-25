@@ -36,7 +36,7 @@ const bg = hero.querySelector('.hero__bg');
 const glassCanvas = hero.querySelector('.hero__glass');
 const ACCENT = '#4e6365';
 
-const GLASS_TIME = 6500; // длительность перехода, мс
+const GLASS_TIME = 4600; // длительность перехода, мс
 const SWAP_AT = 0.5;     // когда под холстом меняется настоящий слайд
 
 const VERTEX = `#version 300 es
@@ -67,11 +67,11 @@ float ease(float x) {
   return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
 }
 
-// Размытие растёт вместе с рёбрами: сначала почти незаметно, потом всё быстрее,
-// плавный пик в середине (там меняется фото), дальше так же плавно затухает
+// Размытие — короткая вспышка только вокруг смены фото (0.32–0.66),
+// чтобы шов был незаметен. Пока рёбра наезжают и расходятся, фото под ними видно
 float blurCurve(float t) {
-  if (t < 0.5) return pow(0.5 - 0.5 * cos(PI * t / 0.5), 1.8);
-  return pow(0.5 + 0.5 * cos(PI * clamp((t - 0.5) / 0.42, 0.0, 1.0)), 1.6);
+  if (t < 0.5) return 0.5 - 0.5 * cos(PI * clamp((t - 0.32) / 0.18, 0.0, 1.0));
+  return 0.5 + 0.5 * cos(PI * clamp((t - 0.5) / 0.16, 0.0, 1.0));
 }
 
 // Насколько место «под стеклом». Одна непрерывная волна: стекло накатывает
@@ -283,7 +283,7 @@ function createGlass() {
       gl.uniform1f(u.uT, t);
       gl.uniform1f(u.uTime, seconds);
       // Фото меняется плавно в самой размытой части перехода
-      const m = Math.min(Math.max((t - 0.42) / 0.16, 0), 1);
+      const m = Math.min(Math.max((t - 0.44) / 0.12, 0), 1);
       gl.uniform1f(u.uMix, m * m * (3 - 2 * m));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
@@ -298,12 +298,12 @@ try {
 }
 
 
-// ===== Слайдер первого экрана: смена каждые 12 секунд, клик по номеру, свайп =====
+// ===== Слайдер первого экрана: смена каждые 9 секунд, клик по номеру, свайп =====
 
 const slides = hero.querySelectorAll('.hero__slide');
 const steps = hero.querySelectorAll('button.hero__step');
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const delay = 12000;
+const delay = 9000;
 let current = 0;
 let timer;
 let busy = false;
