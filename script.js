@@ -283,7 +283,7 @@ function createGlass() {
       gl.uniform1f(u.uT, t);
       gl.uniform1f(u.uTime, seconds);
       // Фото плавно растворяется одно в другом (прозрачностью)
-      const m = Math.min(Math.max((t - 0.3) / 0.4, 0), 1);
+      const m = Math.min(Math.max((t - 0.36) / 0.28, 0), 1);
       gl.uniform1f(u.uMix, m * m * (3 - 2 * m));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
