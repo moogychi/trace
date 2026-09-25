@@ -11,6 +11,15 @@
 </head>
 <body>
 
+  <!-- Фильтр «ребристое стекло» для смены слайдов -->
+  <svg class="visually-hidden" aria-hidden="true">
+    <filter id="hero-glass" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feImage result="map" preserveAspectRatio="none"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="0" result="blur"/>
+      <feDisplacementMap in="blur" in2="map" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </svg>
+
   <!-- Первый экран -->
   <section class="hero">
     <div class="hero__inner">
@@ -35,6 +44,9 @@
           </div>
         </div>
       </div>
+
+      <!-- Блики на рёбрах стекла, видны только во время смены слайда -->
+      <div class="hero__glass" aria-hidden="true"></div>
 
       <header class="header">
         <a class="header__logo" href="#" aria-label="Трейс — на главную">
@@ -96,19 +108,83 @@
 
     // Слайдер первого экрана: смена каждые 6 секунд, клик по номеру, свайп
     const hero = document.querySelector('.hero');
+    const bg = hero.querySelector('.hero__bg');
     const slides = hero.querySelectorAll('.hero__slide');
     const steps = hero.querySelectorAll('button.hero__step');
     const delay = 6000;
     let current = 0;
     let timer;
 
-    function show(index) {
-      current = (index + slides.length) % slides.length;
+    function show(index, withGlass = true) {
+      const next = (index + slides.length) % slides.length;
+      if (withGlass && next !== current) glassPulse();
+      current = next;
       slides.forEach((slide, i) => slide.classList.toggle('is-active', i === current));
       steps.forEach((step, i) => step.classList.toggle('is-active', i === current));
       clearTimeout(timer);
       timer = setTimeout(() => show(current + 1), delay);
     }
+
+    // Эффект ребристого стекла: картинка на миг «уходит» за стеклянные полосы
+    const glassFilter = document.querySelector('#hero-glass');
+    const glassMap = glassFilter.querySelector('feImage');
+    const glassBlur = glassFilter.querySelector('feGaussianBlur');
+    const glassShift = glassFilter.querySelector('feDisplacementMap');
+    const glassSheen = hero.querySelector('.hero__glass');
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const glassTime = 1400;
+    let strip = 60;
+    let glassFrame;
+
+    // Карта сдвигов: в каждой полосе яркость растёт слева направо
+    function buildGlassMap() {
+      const w = bg.clientWidth;
+      const h = bg.clientHeight;
+      strip = Math.max(36, Math.round(w / 24));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = 1;
+      const ctx = canvas.getContext('2d');
+      const data = ctx.createImageData(w, 1);
+      for (let x = 0; x < w; x++) {
+        let r = Math.round((x % strip) / strip * 255);
+        // У краёв сдвигаем только внутрь, чтобы не было пустых полос
+        if (x < strip) r = Math.max(r, 128);
+        if (x >= w - strip) r = Math.min(r, 128);
+        data.data[x * 4] = r;
+        data.data[x * 4 + 1] = 128;
+        data.data[x * 4 + 3] = 255;
+      }
+      ctx.putImageData(data, 0, 0);
+      glassMap.setAttribute('href', canvas.toDataURL());
+      glassMap.setAttribute('width', w);
+      glassMap.setAttribute('height', h);
+      hero.style.setProperty('--strip', strip + 'px');
+    }
+
+    function glassPulse() {
+      if (reduceMotion.matches) return;
+      cancelAnimationFrame(glassFrame);
+      const start = performance.now();
+      bg.style.filter = 'url(#hero-glass)';
+
+      function frame(now) {
+        const t = Math.min((now - start) / glassTime, 1);
+        const power = Math.sin(Math.PI * t); // 0 → 1 → 0
+        glassShift.setAttribute('scale', (strip * 1.3 * power).toFixed(1));
+        glassBlur.setAttribute('stdDeviation', (5 * power).toFixed(2));
+        glassSheen.style.opacity = power;
+        if (t < 1) {
+          glassFrame = requestAnimationFrame(frame);
+        } else {
+          bg.style.filter = '';
+        }
+      }
+      glassFrame = requestAnimationFrame(frame);
+    }
+
+    buildGlassMap();
+    window.addEventListener('resize', buildGlassMap);
 
     hero.style.setProperty('--slide-delay', delay + 'ms');
     steps.forEach((step, i) => step.addEventListener('click', () => show(i)));
@@ -122,7 +198,7 @@
       touchX = null;
     });
 
-    show(0);
+    show(0, false);
   </script>
 </body>
 </html>
