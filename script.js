@@ -668,9 +668,10 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     .fromTo(mark,
       { backgroundSize: '0% 100%', color: '#2b2b2b' },
       { backgroundSize: '100% 100%', color: '#ffffff', duration: 0.9, ease: 'power2.inOut' }, 0.4)
-    .fromTo(mainEl, mainFrom, { ...mainTo, duration: 1.6, ease: 'power2.inOut' }, 1.1)
-    .fromTo(barEl, barFrom, { ...barTo, duration: 0.6, ease: 'power2.out' }, 2.5)
-    .from('.dominant__dot', { scale: 0, duration: 0.5, ease: 'back.out(3)' }, 2.5),
+    // линия растёт сразу после плашки и быстро
+    .fromTo(mainEl, mainFrom, { ...mainTo, duration: 0.7, ease: 'power2.inOut' }, 1.3)
+    .fromTo(barEl, barFrom, { ...barTo, duration: 0.35, ease: 'power2.out' }, 1.95)
+    .from('.dominant__dot', { scale: 0, duration: 0.4, ease: 'back.out(3)' }, 1.95),
   'top 95%', 'bottom 15%', document.querySelector('.dominant__inner'));
 
   const media = document.querySelector('.comfort__media');

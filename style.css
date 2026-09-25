@@ -724,6 +724,12 @@ button.hero__step:not(.is-active):hover {
   height: calc(800 * var(--k));
 }
 
+/* С разворотом фото блок не ниже экрана, а фото — на всю высоту блока:
+   после разворота внизу не остаётся белой полосы */
+.dominant.is-expandable .dominant__inner {
+  height: max(calc(800 * var(--k)), 100vh);
+}
+
 .dominant .label {
   position: absolute;
   left: calc(32 * var(--k));
@@ -776,7 +782,7 @@ button.hero__step:not(.is-active):hover {
   font-family: var(--font-wide);
   font-weight: 400;
   font-size: calc(72 * var(--k));
-  line-height: 1;
+  line-height: 0.9;
   letter-spacing: -0.01em;
   text-align: center;
   text-transform: uppercase;
@@ -792,7 +798,7 @@ button.hero__step:not(.is-active):hover {
   left: 0;
   top: 0;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   pointer-events: none;
 }
@@ -825,10 +831,12 @@ button.hero__step:not(.is-active):hover {
   stroke-width: 1;
 }
 
+/* квадратик — точно по центру стыка вертикальной и горизонтальной линий */
 .dominant__dot {
   position: absolute;
-  left: calc(717 * var(--k));
-  top: calc(563 * var(--k));
+  left: calc(721.2 * var(--k));
+  top: calc(563.5 * var(--k));
+  translate: -50% -50%;
   width: calc(7 * var(--k));
   height: calc(7 * var(--k));
   background: #c0c9c8;
