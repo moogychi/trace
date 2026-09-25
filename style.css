@@ -41,9 +41,9 @@ a {
 .hero__inner {
   --k: calc(100cqw / 1440);
   position: relative;
-  /* Как в макете (820 при ширине 1440), но не выше окна браузера,
-     чтобы «ТРЕЙС» не уезжало за край на больших мониторах */
-  height: max(560px, min(calc(820 * var(--k)), 100svh));
+  /* Во всю высоту экрана пользователя */
+  height: 100svh;
+  min-height: 560px;
   overflow: hidden;
   color: var(--white);
   background: var(--accent);
@@ -79,7 +79,8 @@ a {
   left: calc(-59 * var(--k));
   top: calc(-72 * var(--k));
   width: calc(1554 * var(--k));
-  height: calc(928 * var(--k));
+  /* как в макете, но не короче экрана — если экран выше, небо тянется вниз */
+  height: max(calc(928 * var(--k)), calc(100% + 108 * var(--k)));
   transform: scaleX(-1);
 }
 
@@ -149,9 +150,10 @@ a {
   visibility: visible;
 }
 
+/* Башня и пятно привязаны к низу экрана: при любой высоте экрана башня «стоит» */
 .hero__tower {
   left: calc(-203 * var(--k));
-  top: calc(-11 * var(--k));
+  bottom: calc(-208 * var(--k));
   width: calc(789 * var(--k));
   height: calc(1039 * var(--k));
 }
@@ -159,7 +161,7 @@ a {
 .hero__glow {
   position: absolute;
   left: calc(-63 * var(--k));
-  top: calc(426 * var(--k));
+  bottom: calc(-70 * var(--k));
   width: calc(201 * var(--k));
   height: calc(464 * var(--k));
   border-radius: 50px;
@@ -178,7 +180,9 @@ a {
   position: absolute;
   left: calc(-301 * var(--k));
   top: calc(-300 * var(--k));
-  width: calc(2073 * var(--k));
+  /* как в макете, но на высоком экране группа пропорционально растёт,
+     чтобы стена закрывала экран до низа (внизу фото — чёрная полоса, её прячем) */
+  height: max(calc(1464 * var(--k)), calc((100% + 300 * var(--k)) * 1.05));
   aspect-ratio: 2073 / 1464;
 }
 
@@ -707,11 +711,6 @@ button.hero__step:not(.is-active):hover {
 /* ===== Планшет ===== */
 
 @media (max-width: 1199px) {
-  .hero__inner {
-    height: 100svh;
-    min-height: 560px;
-  }
-
   /* Фон и башня растягиваются по высоте экрана */
   .hero__sky {
     inset: 0;
@@ -731,6 +730,7 @@ button.hero__step:not(.is-active):hover {
 
   .hero__glow {
     top: 52%;
+    bottom: auto;
     height: 45%;
   }
 

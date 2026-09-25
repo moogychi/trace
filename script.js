@@ -478,7 +478,8 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
 
 // ===== Появление блоков при скролле (GSAP + ScrollTrigger) =====
 //
-// Всё проигрывается один раз, когда блок доходит до нижней части экрана.
+// Анимация проигрывается каждый раз, когда блок появляется на экране;
+// когда блок полностью уходит с экрана, он незаметно возвращается в начало.
 // Начальное (скрытое) состояние задаёт скрипт: если GSAP не загрузился,
 // всё просто видно сразу.
 
@@ -502,39 +503,46 @@ function splitChars(line) {
 }
 
 if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
-  const once = (trigger, start = 'top 80%') => ({ trigger, start, once: true });
+  // Запуск при каждом появлении на экране (сверху или снизу),
+  // сброс — когда элемент полностью ушёл с экрана
+  const replay = (trigger, anim, start = 'top 85%', end = 'bottom 15%') => {
+    ScrollTrigger.create({
+      trigger, start, end,
+      onEnter: () => anim.play(),
+      onEnterBack: () => anim.play(),
+    });
+    ScrollTrigger.create({
+      trigger, start: 'top bottom', end: 'bottom top',
+      onLeave: () => anim.pause(0),
+      onLeaveBack: () => anim.pause(0),
+    });
+  };
+  const timeline = () => gsap.timeline({ paused: true });
 
   // Заголовки: буквы по очереди выезжают снизу из-под края строки
   document.querySelectorAll('.about__title, .comfort__title').forEach((title) => {
     const chars = [...title.querySelectorAll('.about__line, .comfort__line')].flatMap(splitChars);
-    gsap.from(chars, {
+    replay(title, timeline().from(chars, {
       yPercent: 110,
-      duration: 0.7,
-      ease: 'power3.out',
-      stagger: 0.014,
-      scrollTrigger: once(title),
-    });
+      duration: 1.1,
+      ease: 'power2.out',
+      stagger: 0.024,
+    }));
   });
 
-  // Метка раздела и абзац — мягко поднимаются и проявляются
+  // Метка раздела и абзац — просто проявляются
   document.querySelectorAll('.about .label, .about__text').forEach((el) => {
-    gsap.from(el, {
-      y: 24,
-      opacity: 0,
-      duration: 1,
-      ease: 'power3.out',
-      scrollTrigger: once(el, 'top 90%'),
-    });
+    replay(el, timeline().from(el, { opacity: 0, duration: 1.6, ease: 'power1.inOut' }), 'top 90%');
   });
 
   // Картинки: шторка снизу вверх, фото внутри чуть отдаляется,
   // дальше при скролле фото движется медленнее страницы (параллакс)
   const reveal = (frame, img, zoomFrom) => {
-    gsap.timeline({ scrollTrigger: once(frame) })
+    replay(frame, timeline()
       .fromTo(frame,
         { clipPath: 'inset(100% 0% 0% 0%)' },
-        { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.4, ease: 'power3.inOut' })
-      .from(img, { scale: zoomFrom, duration: 1.8, ease: 'power3.out' }, 0);
+        { clipPath: 'inset(0% 0% 0% 0%)', duration: 2, ease: 'power2.inOut' })
+      .from(img, { scale: zoomFrom, duration: 2.6, ease: 'power2.out' }, 0));
   };
   const parallax = (frame, img, from, to) => {
     gsap.fromTo(img, { y: from }, {
@@ -546,13 +554,13 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
 
   const photoFrame = document.querySelector('.about__photo');
   const photo = photoFrame.querySelector('img');
-  reveal(photoFrame, photo, 1.25);
+  reveal(photoFrame, photo, 1.2);
   parallax(photoFrame, photo, '-8%', '8%');
 
   const media = document.querySelector('.comfort__media');
   const towers = media.querySelector('.comfort__towers');
   gsap.set(towers, { transformOrigin: '50% 100%' });
-  reveal(media, towers, 1.15);
+  reveal(media, towers, 1.12);
   parallax(media, towers, 60, -60);
   parallax(media, media.querySelector('.comfort__sky'), 25, -25); // небо медленнее — глубина
 
@@ -565,18 +573,20 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     // Ширина конечного числа (меряем после загрузки шрифта) — рамка не прыгает
     document.fonts.ready.then(() => { num.style.minWidth = `${num.offsetWidth}px`; });
     const counter = { n: 0 };
+    const at = i * 0.25; // строки по очереди
 
-    gsap.timeline({ scrollTrigger: once(fact.parentElement, 'top 85%'), delay: i * 0.15 })
-      .from(fact.querySelector('.fact__rule'), { scaleX: 0, duration: 1.2, ease: 'power3.inOut' })
+    replay(fact.parentElement, timeline()
+      .from(fact.querySelector('.fact__rule'), { scaleX: 0, duration: 1.8, ease: 'power2.inOut' }, at)
       .fromTo(value,
         { clipPath: 'inset(0% 100% 0% 0%)' },
-        { clipPath: 'inset(0% -12px 0% 0%)', duration: 1, ease: 'power3.out' }, 0.1)
+        { clipPath: 'inset(0% -12px 0% 0%)', duration: 1.5, ease: 'power2.out' }, at + 0.15)
       .fromTo(counter, { n: 0 }, {
         n: target,
-        duration: 1.4,
+        duration: 2.2,
         ease: 'power2.out',
         onUpdate: () => { num.textContent = Math.round(counter.n); },
-      }, 0.1)
-      .from(fact.querySelector('.fact__label'), { y: 12, opacity: 0, duration: 0.8, ease: 'power3.out' }, 0.4);
+      }, at + 0.15)
+      .from(fact.querySelector('.fact__label'), { opacity: 0, duration: 1.4, ease: 'power1.inOut' }, at + 0.5),
+    'top 85%', 'bottom 15%');
   });
 }
