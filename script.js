@@ -639,11 +639,11 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     // к крупному: метка и адрес, потом абзац с линией, потом заголовок
     // (через filter, чтобы не мешать анимациям появления)
     .fromTo('.dominant .label, .dominant__address',
-      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'none', duration: 0.15 }, 0.1)
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.in', duration: 0.3 }, 0.1)
     .fromTo('.dominant__text, .dominant__link, .dominant__dot',
-      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'none', duration: 0.18 }, 0.18)
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.in', duration: 0.3 }, 0.2)
     .fromTo('.dominant__center',
-      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'none', duration: 0.22 }, 0.28)
+      { filter: 'opacity(1)' }, { filter: 'opacity(0)', ease: 'power1.in', duration: 0.32 }, 0.3)
     // Глубина: рамка растёт, а фото внутри отдаляется и чуть смещается —
     // будто камера отъезжает; текст вокруг уходит назад
     .fromTo(expand.querySelector('img'),
@@ -660,9 +660,10 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   const mark = dominantText.querySelector('.dominant__mark');
   const [linkMain, linkBar] = document.querySelectorAll('.dominant__link path');
   // длина путей задана как 1 (pathLength), поэтому линия «рисуется» от 1 до 0
-  const draw = (path) => [path, { strokeDasharray: 1, strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
-  const [mainEl, mainFrom, mainTo] = draw(linkMain);
-  const [barEl, barFrom, barTo] = draw(linkBar);
+  // сразу прячем линию (не нарисована), потом она «дорисовывается» от 1 до 0
+  gsap.set([linkMain, linkBar], { attr: { 'stroke-dasharray': 1, 'stroke-dashoffset': 1 } });
+  gsap.set(mark, { backgroundSize: '0% 100%', color: '#2b2b2b' });
+  gsap.set('.dominant__dot', { scale: 0 });
 
   replay(dominantText, timeline()
     .from(dominantText, { opacity: 0, duration: 0.8, ease: 'power1.out' })
@@ -670,8 +671,10 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
       { backgroundSize: '0% 100%', color: '#2b2b2b' },
       { backgroundSize: '100% 100%', color: '#ffffff', duration: 0.9, ease: 'power2.inOut' }, 0.4)
     // линия растёт сразу после плашки и быстро
-    .fromTo(mainEl, mainFrom, { ...mainTo, duration: 0.7, ease: 'power2.inOut' }, 1.3)
-    .fromTo(barEl, barFrom, { ...barTo, duration: 0.35, ease: 'power2.out' }, 1.95)
+    .fromTo(linkMain, { attr: { 'stroke-dashoffset': 1 } },
+      { attr: { 'stroke-dashoffset': 0 }, duration: 0.7, ease: 'power2.inOut' }, 1.3)
+    .fromTo(linkBar, { attr: { 'stroke-dashoffset': 1 } },
+      { attr: { 'stroke-dashoffset': 0 }, duration: 0.35, ease: 'power2.out' }, 1.95)
     .from('.dominant__dot', { scale: 0, duration: 0.4, ease: 'back.out(3)' }, 1.95),
   'top 95%', 'bottom 15%', document.querySelector('.dominant__inner'));
 
