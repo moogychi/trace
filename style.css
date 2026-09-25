@@ -138,7 +138,8 @@ a {
   animation-play-state: paused;
 }
 
-/* Холст со стеклом (рисуется в script.js), виден только во время смены */
+/* Холст с живым фоном и стеклом (рисуется в script.js). Появляется плавно,
+   когда загрузились картинки; без WebGL остаётся скрытым — виден обычный фон */
 .hero__glass {
   position: absolute;
   inset: 0;
@@ -146,10 +147,14 @@ a {
   height: 100%;
   pointer-events: none;
   visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.8s ease, visibility 0s 0.8s;
 }
 
 .hero__glass.is-on {
   visibility: visible;
+  opacity: 1;
+  transition: opacity 0.8s ease;
 }
 
 .hero__tower {
