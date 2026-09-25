@@ -16,6 +16,18 @@
   --font-wide: "LT Amber Wide", "Unbounded", var(--font);
 }
 
+/* Место под полосу прокрутки всегда занято: когда меню блокирует прокрутку
+   и полоса пропадает, страница не дёргается вбок */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* Lenis при остановке прячет прокрутку через overflow: clip — у него место
+   под полосу не сохраняется; hidden сохраняет */
+html.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   font-family: var(--font);
@@ -315,10 +327,64 @@ a {
   position: absolute;
   right: 20px;
   top: 16px;
+}
+
+/* Кнопка меню: три полоски. При наведении заливается белым,
+   в открытом меню — чёрная, полоски складываются в крестик */
+.burger {
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border: 0;
-  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.27);
+  background: transparent;
+  color: var(--white);
   cursor: pointer;
+  transition: background-color 0.35s ease, border-color 0.35s ease, color 0.35s ease;
+}
+
+.burger span {
+  position: absolute;
+  left: 7px;
+  width: 16px;
+  height: 1px;
+  background: currentColor;
+  transition: transform 0.45s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.3s ease;
+}
+
+.burger span:nth-child(1) { top: 10px; }
+.burger span:nth-child(2) { top: 15px; }
+.burger span:nth-child(3) { top: 20px; }
+
+.burger:hover {
+  background: var(--white);
+  border-color: var(--white);
+  color: var(--ink);
+}
+
+.burger--dark {
+  border-color: rgba(0, 0, 0, 0.27);
+  color: #000;
+}
+
+/* В открытом меню: чёрная кнопка с белым крестиком (после того как шторка прошла) */
+.menu.is-open .burger--dark {
+  background: #000;
+  border-color: #000;
+  color: var(--white);
+  transition-delay: 0.35s;
+}
+
+.menu.is-open .burger--dark span {
+  transition-delay: 0.35s;
+}
+
+.menu.is-open .burger--dark span:nth-child(1) { transform: translateY(5px) rotate(45deg); }
+.menu.is-open .burger--dark span:nth-child(2) { opacity: 0; }
+.menu.is-open .burger--dark span:nth-child(3) { transform: translateY(-5px) rotate(-45deg); }
+
+.menu.is-open .burger--dark:hover {
+  background: #2b2b2b;
+  border-color: #2b2b2b;
 }
 
 /* ----- Счётчик слайдов 01 / 02 / 03 ----- */
@@ -784,6 +850,17 @@ button.hero__step:not(.is-active):hover {
     #1e4646;
 }
 
+/* Видео стекла — фон всего меню (из-под белой части видна его нижняя часть,
+   как в макете). Пока оно не загрузилось, видна картинка стекла под ним */
+.menu__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
 .menu__panel {
   position: absolute;
   left: 0;
@@ -819,10 +896,6 @@ button.hero__step:not(.is-active):hover {
   position: absolute;
   right: 20px;
   top: 16px;
-  padding: 0;
-  border: 0;
-  background: none;
-  cursor: pointer;
 }
 
 /* Крупные пункты: серые, наведённый — чёрный */
@@ -868,7 +941,8 @@ button.hero__step:not(.is-active):hover {
   visibility: hidden;
 }
 
-.menu__pic.is-shown {
+/* видна только выбранная картинка и только при открытом меню */
+.menu.is-open .menu__pic.is-shown {
   visibility: visible;
 }
 

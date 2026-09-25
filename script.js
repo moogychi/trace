@@ -672,7 +672,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
 // за ней, внахлёст, опускается полоса стекла. Верхняя строка (логотип,
 // «выбрать офис», кнопка) стоит на тех же местах — шторка просто
 // «перекрашивает» её в тёмный. Остальное проявляется прозрачностью.
-// При наведении на пункт его картинка открывается шторкой слева.
+// При наведении на пункт его картинка открывается шторкой снизу вверх.
 
 const menuEl = document.querySelector('.menu');
 const menuPanel = menuEl.querySelector('.menu__panel');
@@ -680,6 +680,7 @@ const menuGlass = menuEl.querySelector('.menu__glass');
 const menuLinks = [...menuEl.querySelectorAll('.menu__link')];
 const menuPhotos = [...menuEl.querySelectorAll('.menu__pic')];
 const menuFade = menuEl.querySelectorAll('.menu__link, .menu__photo, .menu__contacts');
+const menuVideo = menuEl.querySelector('.menu__video');
 let menuTl = null;
 let menuPhotoIndex = menuLinks.findIndex((link) => link.classList.contains('is-active'));
 let menuPhotoZ = 1;
@@ -688,22 +689,32 @@ menuPhotos[menuPhotoIndex].classList.add('is-shown');
 
 function buildMenuTimeline() {
   return gsap.timeline({ paused: true })
-    // белая шторка раскрывается сверху вниз (её содержимое стоит на месте)
+    // Одна шторка из двух полос: белая раскрывается сверху вниз (содержимое стоит
+    // на месте), стекло съезжает сверху в том же темпе. Край стекла всегда ниже
+    // края белой части — полосы едут вместе, без второго шага
     .fromTo(menuPanel,
       { clipPath: 'inset(0% 0% 100% 0%)' },
-      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.1, ease: 'power3.inOut' }, 0)
-    // стекло — вторая шторка: съезжает сверху и выходит из-под белой примерно
-    // на середине её пути, дальше они едут вместе — одно гладкое движение
+      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.2, ease: 'power3.inOut' }, 0)
     .fromTo(menuGlass,
       { yPercent: -100 },
-      { yPercent: 0, duration: 1.15, ease: 'power2.inOut' }, 0.1)
+      { yPercent: 0, duration: 1.2, ease: 'power3.inOut' }, 0)
     .fromTo(menuFade,
       { opacity: 0 },
       { opacity: 1, duration: 0.6, ease: 'power1.out', stagger: 0.05 }, 0.7);
 }
 
+// Картинка пункта в покое медленно отдаляется
+function idleZoom(img, from = 1.18) {
+  gsap.killTweensOf(img);
+  gsap.fromTo(img, { scale: from }, { scale: 1, duration: 8, ease: 'power2.out' });
+}
+
 function openFullMenu() {
   if (!menuTl) menuTl = buildMenuTimeline();
+  // Видео стекла грузим только при первом открытии — не тормозит загрузку сайта
+  if (!menuVideo.src) menuVideo.src = menuVideo.dataset.src;
+  menuVideo.play().catch(() => {});
+  idleZoom(menuPhotos[menuPhotoIndex].querySelector('img'));
   menuEl.classList.add('is-open');
   menuEl.setAttribute('aria-hidden', 'false');
   toggle.setAttribute('aria-expanded', 'true');
@@ -720,6 +731,7 @@ function closeFullMenu() {
   // закрытие — то же движение назад, чуть быстрее
   menuTl.timeScale(1.4).reverse().eventCallback('onReverseComplete', () => {
     menuEl.classList.remove('is-open');
+    menuVideo.pause();
     menuEl.setAttribute('aria-hidden', 'true');
   });
 }
@@ -730,7 +742,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeFullMenu();
 });
 
-// Наведение на пункт: он становится чёрным, его картинка открывается шторкой слева
+// Наведение на пункт: он становится чёрным, его картинка открывается шторкой
+// снизу вверх (как фото во втором блоке) и дальше медленно отдаляется
 menuLinks.forEach((link, i) => {
   link.addEventListener('mouseenter', () => {
     menuLinks.forEach((other) => other.classList.toggle('is-active', other === link));
@@ -740,11 +753,10 @@ menuLinks.forEach((link, i) => {
     const img = pic.querySelector('img');
     pic.classList.add('is-shown');
     pic.style.zIndex = ++menuPhotoZ;
-    gsap.killTweensOf([pic, img]);
-    gsap.timeline()
-      .fromTo(pic,
-        { clipPath: 'inset(0% 100% 0% 0%)' },
-        { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.9, ease: 'power3.inOut' }, 0)
-      .fromTo(img, { scale: 1.15 }, { scale: 1, duration: 1.2, ease: 'power2.out' }, 0);
+    gsap.killTweensOf(pic);
+    gsap.fromTo(pic,
+      { clipPath: 'inset(100% 0% 0% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1, ease: 'power3.inOut' });
+    idleZoom(img, 1.3);
   });
 });

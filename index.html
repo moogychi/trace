@@ -66,8 +66,8 @@
           выбрать офис
         </a>
 
-        <button class="header__toggle" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav">
-          <img src="img/menu.svg" width="32" height="32" alt="">
+        <button class="header__toggle burger" type="button" aria-label="Открыть меню" aria-expanded="false" aria-controls="nav">
+          <span></span><span></span><span></span>
         </button>
       </header>
 
@@ -199,7 +199,10 @@
 
   <!-- Полноэкранное меню (десктоп): белая шторка сверху, под ней полоса стекла -->
   <div class="menu" id="menu" aria-hidden="true">
-    <div class="menu__glass"></div>
+    <div class="menu__glass">
+      <!-- Видео подгружается при первом открытии меню, до этого — картинка стекла -->
+      <video class="menu__video" muted loop playsinline preload="none" data-src="img/color.mp4" aria-hidden="true"></video>
+    </div>
     <div class="menu__panel">
       <!-- Верхняя строка — на тех же местах, что на первом экране, только тёмная -->
       <a class="menu__logo" href="#" aria-label="Трейс — на главную">
@@ -209,8 +212,8 @@
         <span class="header__action-icon" aria-hidden="true"><img src="img/dot.svg" width="35.8" height="35.8" alt=""></span>
         выбрать офис
       </a>
-      <button class="menu__close" type="button" aria-label="Закрыть меню">
-        <img src="img/menu-dark.svg" width="32" height="32" alt="">
+      <button class="menu__close burger burger--dark" type="button" aria-label="Закрыть меню">
+        <span></span><span></span><span></span>
       </button>
 
       <nav class="menu__nav" aria-label="Разделы сайта">
