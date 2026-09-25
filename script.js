@@ -506,6 +506,219 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
 });
 
 
+// ===== Карусель фото с волной (WebGL) =====
+//
+// Столбик из 5 карточек по центру экрана. Прокрутка двигает его вверх;
+// от скорости прокрутки карточки изгибаются дугой (сильнее у краёв экрана)
+// и слегка растягиваются по вертикали — эффект из примера Codrops
+// «Wavy Infinite Carousel». В покое карточки ровные.
+
+const CAROUSEL_PHOTOS = [
+  null, // первая — то же фото, что разворачивалось (берётся со страницы)
+  'img/gallery-2.jpg',
+  'img/gallery-3.jpg',
+  'img/gallery-4.jpg',
+  'img/gallery-5.jpg',
+];
+
+const CAROUSEL_VERTEX = `
+precision mediump float;
+attribute vec2 aPos;          // 0…1 внутри карточки
+uniform vec2 uRes;            // размер экрана, px
+uniform vec4 uRect;           // карточка: x, y, ширина, высота, px
+uniform float uCurve;         // сила дуги, px
+uniform float uStretch;       // растяжение от скорости, px
+varying vec2 vUv;
+void main() {
+  vUv = aPos;
+  vec2 p = uRect.xy + aPos * uRect.zw;
+  // растяжение: середина карточки по ширине тянется сильнее краёв
+  p.y -= sin(aPos.x * 3.14159) * uStretch * (aPos.y - 0.5) * 2.0;
+  // дуга: чем дальше от центра экрана по вертикали, тем сильнее уводит вбок
+  float y = (p.y - uRes.y * 0.5) / uRes.y;
+  p.x += uCurve * (1.0 - cos(y * 3.14159));
+  gl_Position = vec4(p.x / uRes.x * 2.0 - 1.0, 1.0 - p.y / uRes.y * 2.0, 0.0, 1.0);
+}`;
+
+const CAROUSEL_FRAGMENT = `
+precision mediump float;
+uniform sampler2D uTex;
+uniform vec4 uCrop;           // какую часть фото показать: x, y, ширина, высота (0…1)
+varying vec2 vUv;
+void main() {
+  gl_FragColor = texture2D(uTex, uCrop.xy + vUv * uCrop.zw);
+}`;
+
+function createCarousel(canvas, firstImg, firstLayer) {
+  if (!canvas || !window.gsap) return null;
+  const gl = canvas.getContext('webgl', { alpha: true, antialias: true, premultipliedAlpha: false });
+  if (!gl) return null;
+
+  const compile = (type, source) => {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(shader));
+    return shader;
+  };
+  const program = gl.createProgram();
+  gl.attachShader(program, compile(gl.VERTEX_SHADER, CAROUSEL_VERTEX));
+  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, CAROUSEL_FRAGMENT));
+  gl.linkProgram(program);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program));
+  gl.useProgram(program);
+
+  // Сетка 24×24 — чтобы карточка могла плавно гнуться
+  const N = 24;
+  const verts = [];
+  for (let j = 0; j < N; j++) {
+    for (let i = 0; i < N; i++) {
+      const x0 = i / N, x1 = (i + 1) / N, y0 = j / N, y1 = (j + 1) / N;
+      verts.push(x0, y0, x1, y0, x0, y1, x0, y1, x1, y0, x1, y1);
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(program, 'aPos');
+  gl.enableVertexAttribArray(aPos);
+  gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+  const count = verts.length / 2;
+
+  const u = {};
+  ['uRes', 'uRect', 'uCurve', 'uStretch', 'uCrop', 'uTex'].forEach((n) => {
+    u[n] = gl.getUniformLocation(program, n);
+  });
+  gl.uniform1i(u.uTex, 0);
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+  // Фото → текстуры (грузятся заранее, в фоне)
+  const cards = CAROUSEL_PHOTOS.map((src, i) => {
+    const img = i === 0 ? firstImg : new Image();
+    const card = { img, tex: null };
+    const upload = () => {
+      card.tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, card.tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    };
+    if (i === 0) {
+      img.loading = 'eager'; // первое фото нужно заранее
+      if (img.complete && img.naturalWidth) upload(); else img.addEventListener('load', upload, { once: true });
+    } else {
+      img.decoding = 'async';
+      img.addEventListener('load', upload, { once: true });
+      img.src = src;
+    }
+    return card;
+  });
+
+  // Размеры карточки: 62% высоты экрана, пропорция 3:4, отступ 6% высоты
+  const size = () => {
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    const ch = h * 0.62;
+    return { w, h, cw: ch * 0.75, ch, gap: h * 0.06 };
+  };
+
+  let progress = 0;
+  let running = false;
+  let velocity = 0;
+  let lastY = window.scrollY;
+
+  // Где карточка i при текущей прокрутке (px, относительно экрана)
+  function cardRect(i, p = progress) {
+    const s = size();
+    const step = s.ch + s.gap;
+    const offset = p * (cards.length - 1) * step;
+    return {
+      left: (s.w - s.cw) / 2,
+      top: (s.h - s.ch) / 2 + i * step - offset,
+      width: s.cw,
+      height: s.ch,
+    };
+  }
+
+  // Какую часть фото показать в карточке (как object-fit: cover).
+  // У первой — ровно то, что было видно у сжавшегося фото на весь экран
+  function crop(card, i, s) {
+    const iw = card.img.naturalWidth;
+    const ih = card.img.naturalHeight;
+    const ia = iw / ih;
+    if (i === 0) {
+      // фото на весь экран: cover, по вертикали 8% (как в CSS), затем центр под карточку
+      const va = s.w / s.h;
+      let dw, dh, ox, oy;
+      if (ia > va) { dh = s.h; dw = s.h * ia; ox = (s.w - dw) / 2; oy = 0; }
+      else { dw = s.w; dh = s.w / ia; ox = 0; oy = (s.h - dh) * 0.08; }
+      const k = Math.max(s.cw / s.w, s.ch / s.h);
+      const vw = s.cw / k, vh = s.ch / k;
+      const vx = (s.w - vw) / 2, vy = (s.h - vh) / 2;
+      return [(vx - ox) / dw, (vy - oy) / dh, vw / dw, vh / dh];
+    }
+    const ca = s.cw / s.ch;
+    if (ia > ca) { const cw = ca / ia; return [(1 - cw) / 2, 0, cw, 1]; }
+    const chh = ia / ca;
+    return [0, (1 - chh) / 2, 1, chh];
+  }
+
+  function render() {
+    if (!running) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const s = size();
+    const W = Math.round(s.w * dpr), H = Math.round(s.h * dpr);
+    if (canvas.width !== W || canvas.height !== H) {
+      canvas.width = W;
+      canvas.height = H;
+    }
+    gl.viewport(0, 0, W, H);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    // Скорость прокрутки (px за кадр), сглаженная — от неё волна
+    const y = window.scrollY;
+    velocity += ((y - lastY) - velocity) * 0.12;
+    lastY = y;
+    // в начале карусели волна плавно включается — первая карточка совпадает с фото
+    const ramp = Math.min(progress / 0.08, 1);
+    const v = Math.max(-60, Math.min(60, velocity)) * ramp;
+
+    gl.uniform2f(u.uRes, s.w, s.h);
+    gl.uniform1f(u.uCurve, -v * s.w * 0.004);
+    gl.uniform1f(u.uStretch, v * 1.4);
+
+    cards.forEach((card, i) => {
+      if (!card.tex) return;
+      // первую карточку рисуем, только когда сжавшееся фото уже спрятано
+      if (i === 0 && firstLayer && firstLayer.style.visibility !== 'hidden') return;
+      const r = cardRect(i);
+      if (r.top > s.h + 40 || r.top + r.height < -40) return;
+      gl.bindTexture(gl.TEXTURE_2D, card.tex);
+      gl.uniform4f(u.uRect, r.left, r.top, r.width, r.height);
+      gl.uniform4f(u.uCrop, ...crop(card, i, s));
+      gl.drawArrays(gl.TRIANGLES, 0, count);
+    });
+  }
+
+  return {
+    cardRect: (i) => cardRect(i, 0),
+    setProgress(p) {
+      progress = p;
+    },
+    active(on) {
+      if (on === running) return;
+      running = on;
+      lastY = window.scrollY;
+      if (on) gsap.ticker.add(render);
+      else gsap.ticker.remove(render);
+    },
+  };
+}
+
+
 // ===== Появление блоков при скролле (GSAP + ScrollTrigger) =====
 //
 // Анимация проигрывается каждый раз, когда блок появляется на экране;
@@ -590,40 +803,56 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   reveal(photoFrame, photo, 1.35);
   parallax(photoFrame, photo, '-7%', '7%');
 
-  // Блок «Локация»: пока листаешь, блок стоит на месте, а фото из маленькой
-  // рамки разворачивается на весь экран; заголовок и текст плавно уходят.
-  // Листаешь назад — фото сворачивается обратно
+  // Блок «Локация»: пока листаешь, блок стоит на месте.
+  // 1) Фото из маленькой рамки разворачивается на весь экран, текст уходит.
+  // 2) Фото сжимается в карточку по центру — под ней столбик ещё 4 фото.
+  // 3) Столбик едет вверх, карточки изгибаются дугой и растягиваются от скорости
+  //    прокрутки (волна, как в примере Codrops). После пятой — страница дальше.
+  // Листаешь назад — всё в обратном порядке
   const dominant = document.querySelector('.dominant');
   const smallPhoto = dominant.querySelector('.dominant__photo');
   const expand = dominant.querySelector('.dominant__expand');
   dominant.classList.add('is-expandable');
 
-  // Стартовое положение: слой на весь экран уменьшен и обрезан так,
-  // что видно ровно маленькую рамку
-  const startOf = () => {
-    const box = dominant.getBoundingClientRect();
-    const r = smallPhoto.getBoundingClientRect();
+  // Положение слоя на весь экран, при котором видно ровно прямоугольник rect
+  // (координаты относительно блока): слой уменьшен и обрезан по центру
+  const fitTo = (rect) => {
     const w = expand.offsetWidth;
     const h = expand.offsetHeight;
-    const scale = Math.max(r.width / w, r.height / h);
-    const insetX = (w - r.width / scale) / 2;
-    const insetY = (h - r.height / scale) / 2;
+    const scale = Math.max(rect.width / w, rect.height / h);
+    const insetX = (w - rect.width / scale) / 2;
+    const insetY = (h - rect.height / scale) / 2;
     return {
       scale,
-      x: r.left - box.left + r.width / 2 - w / 2,
-      y: r.top - box.top + r.height / 2 - h / 2,
+      x: rect.left + rect.width / 2 - w / 2,
+      y: rect.top + rect.height / 2 - h / 2,
       clipPath: `inset(${insetY}px ${insetX}px ${insetY}px ${insetX}px)`,
     };
   };
+  const startOf = () => {
+    const box = dominant.getBoundingClientRect();
+    const r = smallPhoto.getBoundingClientRect();
+    return fitTo({ left: r.left - box.left, top: r.top - box.top, width: r.width, height: r.height });
+  };
+  const cardOf = () => fitTo(carousel ? carousel.cardRect(0) : { left: 0, top: 0, width: 1, height: 1 });
 
-  gsap.timeline({
+  let carousel = null;
+  try {
+    carousel = createCarousel(dominant.querySelector('.dominant__carousel'), expand.querySelector('img'), expand);
+  } catch (err) {
+    console.warn('Карусель недоступна:', err);
+  }
+  const scroller = { p: 0 };
+
+  const tl = gsap.timeline({
     scrollTrigger: {
       trigger: dominant,
       start: 'top top',
-      end: '+=130%',
+      end: () => `+=${carousel ? 560 : 130}%`,
       pin: true,
       scrub: 1,
       invalidateOnRefresh: true,
+      onToggle: (self) => carousel && carousel.active(self.isActive),
     },
   })
     .fromTo(expand,
@@ -639,6 +868,29 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     .fromTo('.dominant__center, .dominant__text, .dominant__link, .dominant__dot, .dominant .label, .dominant__address',
       { filter: 'opacity(1)' },
       { filter: 'opacity(0)', ease: 'none', duration: 0.4 }, 0);
+
+  if (carousel) {
+    tl
+      // фото на весь экран сжимается в первую карточку столбика
+      .to(expand, {
+        x: () => cardOf().x,
+        y: () => cardOf().y,
+        scale: () => cardOf().scale,
+        clipPath: () => cardOf().clipPath,
+        ease: 'power2.inOut',
+        duration: 0.8,
+        onStart: () => dominant.classList.add('is-carousel'),
+        onReverseComplete: () => dominant.classList.remove('is-carousel'),
+      }, 1.2)
+      // дальше первую карточку рисует холст — точно на том же месте
+      .set(expand, { autoAlpha: 0 }, 2.0)
+      .fromTo(scroller, { p: 0 }, {
+        p: 1,
+        ease: 'none',
+        duration: 3.6,
+        onUpdate: () => carousel.setProgress(scroller.p),
+      }, 2.0);
+  }
 
   // Блок «Локация»: текст проявляется, бирюзовая плашка прочерчивается
   // под словами «7 трлн рублей инвестиций», от неё к центру блока бежит линия,
