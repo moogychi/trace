@@ -103,12 +103,12 @@ void main() {
 
   // Рёбра медленно плывут вбок, пока идёт переход
   float ribX = px.x + uT * uStrip * 1.5;
-  float i = floor(ribX / uStrip);
   float local = fract(ribX / uStrip); // 0…1 поперёк ребра
   float nx = local * 2.0 - 1.0;
 
-  // Ребро — выпуклая линза: картинка внутри мягко отражается
-  float shift = nx * uStrip * 0.6 * power;
+  // Ребро — выпуклая линза. Сдвиг плавно уходит в ноль к краям ребра,
+  // поэтому на стыках нет резких швов и тёмных линий
+  float shift = nx * (1.0 - pow(abs(nx), 4.0)) * uStrip * 0.8 * power;
   vec2 uv = vUv + vec2(shift / uRes.x, 0.0);
 
   // Размытие плавно растёт и спадает за весь переход; к центру экрана сильнее.
@@ -121,21 +121,16 @@ void main() {
   else if (uMix >= 1.0) col = blurred(uB, uv, radius);
   else col = mix(blurred(uA, uv, radius), blurred(uB, uv, radius), uMix);
 
-  // Объём ребра — мягко, без тёмных обводок
-  float bulge = sqrt(max(0.0, 1.0 - nx * nx));
-  float shade = mix(0.93, 1.03, bulge);
-  float crease = (1.0 - smoothstep(0.0, 0.06, local)) * 0.1;
+  // Объём ребра — едва заметный, плавный к краям, без линий на стыках
+  float bulge = 0.5 + 0.5 * cos(PI * nx);
+  float shade = mix(0.975, 1.015, bulge);
 
-  // Блик на каждом ребре слегка «гуляет» туда-сюда
-  float specPos = 0.66 + 0.14 * sin(uTime * 1.6 + i * 0.7);
-  float spec = exp(-pow((local - specPos) / 0.09, 2.0));
-
-  // Световая волна бежит по диагонали через все рёбра — перелив
+  // Световая волна бежит по диагонали через все рёбра — мягкий размытый перелив
   float diag = (px.x + px.y * 0.8) / (uStrip * 11.0) - uTime * 0.3;
-  float sweep = pow(0.5 + 0.5 * cos(2.0 * PI * diag), 14.0);
+  float sweep = pow(0.5 + 0.5 * cos(2.0 * PI * diag), 4.0);
 
-  col *= mix(1.0, shade * (1.0 - crease), power);
-  col += (spec * 0.08 + sweep * (0.04 + 0.1 * bulge)) * power;
+  col *= mix(1.0, shade, power);
+  col += sweep * (0.035 + 0.05 * bulge) * power;
 
   outColor = vec4(col, 1.0);
 }`;
@@ -275,7 +270,7 @@ function createGlass() {
       glassCanvas.height = Math.round(height * dpr);
       gl.viewport(0, 0, glassCanvas.width, glassCanvas.height);
 
-      const strip = Math.max(40, Math.round(width / 20)) * dpr;
+      const strip = Math.max(36, Math.round(width / 22)) * dpr;
       gl.uniform2f(u.uRes, glassCanvas.width, glassCanvas.height);
       gl.uniform1f(u.uStrip, strip);
       gl.uniform1f(u.uDpr, dpr);
