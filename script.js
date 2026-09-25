@@ -311,6 +311,12 @@ try {
   console.warn('Стекло недоступно, будет простая смена слайдов:', err);
 }
 
+// Браузер может забрать видеокарту (нехватка памяти, смена видеокарты
+// на ноутбуке) — тогда дальше меняем слайды просто плавно
+glassCanvas.addEventListener('webglcontextlost', () => {
+  glass = null;
+});
+
 
 // ===== Слайдер первого экрана: смена каждые 9 секунд, клик по номеру, свайп =====
 
@@ -327,7 +333,12 @@ function setSlide(index) {
 }
 
 function setSteps(index) {
-  steps.forEach((step, i) => step.classList.toggle('is-active', i === index));
+  steps.forEach((step, i) => {
+    step.classList.toggle('is-active', i === index);
+    // Для программ чтения с экрана: какой слайд сейчас открыт
+    if (i === index) step.setAttribute('aria-current', 'true');
+    else step.removeAttribute('aria-current');
+  });
 }
 
 function startTimer() {
@@ -357,6 +368,14 @@ function transition(from, to) {
   let last = performance.now();
 
   function frame(now) {
+    // Видеокарту забрали посреди перехода — просто завершаем смену
+    if (!glass) {
+      setSlide(to);
+      glassCanvas.classList.remove('is-on');
+      hero.classList.remove('is-glass');
+      busy = false;
+      return;
+    }
     // Шаг не больше 50 мс: после скрытой вкладки анимация продолжится, а не перескочит
     elapsed += Math.min(now - last, 50);
     last = now;
