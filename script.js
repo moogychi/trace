@@ -67,10 +67,11 @@ float ease(float x) {
   return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
 }
 
-// Плавный «холм» 0 → 1 → 0
-float bell(float x) {
-  x = clamp(x, 0.0, 1.0);
-  return 0.5 - 0.5 * cos(2.0 * PI * x);
+// Сила размытия: плавно растёт до середины, после смены фото спадает быстрее
+// и уходит совсем к 0.82 — пока рёбра ещё расходятся к краям
+float blurCurve(float t) {
+  if (t < 0.5) return 0.5 - 0.5 * cos(PI * t / 0.5);
+  return 0.5 + 0.5 * cos(PI * clamp((t - 0.5) / 0.32, 0.0, 1.0));
 }
 
 // Насколько место «под стеклом». Одна непрерывная волна: стекло накатывает
@@ -114,7 +115,7 @@ void main() {
   // Размытие плавно растёт и спадает за весь переход; к центру экрана сильнее.
   // На пике картинку не различить — там и меняется фото
   float centre = smoothstep(0.0, 1.0, 1.0 - abs(2.0 * vUv.x - 1.0));
-  float radius = bell(uT) * mix(70.0, 95.0, centre) * mix(0.8, 1.0, power) * uDpr;
+  float radius = blurCurve(uT) * mix(70.0, 95.0, centre) * mix(0.8, 1.0, power) * uDpr;
 
   vec3 col;
   if (uMix <= 0.0) col = blurred(uA, uv, radius);
