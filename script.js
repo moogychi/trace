@@ -439,3 +439,38 @@ hero.addEventListener('touchend', (e) => {
 });
 
 show(0, false);
+
+
+// ===== Плавный скролл (Lenis) и анимации при скролле (GSAP) =====
+//
+// Lenis сглаживает прокрутку колёсиком и тачпадом. Его ход передаём GSAP,
+// чтобы анимации, привязанные к скроллу (ScrollTrigger), шли с ним в такт.
+
+let lenis = null;
+
+if (window.gsap && window.ScrollTrigger) {
+  gsap.registerPlugin(ScrollTrigger);
+}
+
+if (window.Lenis && window.gsap && !reduceMotion.matches) {
+  lenis = new Lenis({
+    lerp: 0.09,          // мягкость: меньше — плавнее и «тяжелее»
+    wheelMultiplier: 0.9,
+  });
+  lenis.on('scroll', ScrollTrigger.update);
+  gsap.ticker.add((time) => lenis.raf(time * 1000));
+  gsap.ticker.lagSmoothing(0);
+}
+
+// Ссылки меню на разделы (#about и т. п.) — плавно, через Lenis
+document.querySelectorAll('a[href^="#"]').forEach((link) => {
+  link.addEventListener('click', (e) => {
+    const href = link.getAttribute('href');
+    // Ссылка «#» (логотип) — наверх страницы
+    const target = href === '#' ? document.body : document.querySelector(href);
+    if (!target) return; // раздела пока нет
+    e.preventDefault();
+    if (lenis) lenis.scrollTo(target, { duration: 1.4 });
+    else target.scrollIntoView({ behavior: 'smooth' });
+  });
+});

@@ -6,7 +6,8 @@
   <title>Трейс — деловой центр класса «А»</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500&family=Unbounded:wght@300;400&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -90,6 +91,70 @@
     </div>
   </section>
 
+  <!-- Блок 2: о проекте -->
+  <section class="about" id="about">
+    <div class="about__inner">
+      <p class="label"><span class="label__num">1</span>О проекте</p>
+
+      <h2 class="about__title">
+        <span class="about__line about__line--first">Пространство,</span>
+        <span class="about__line">где работа становится</span>
+        <span class="about__line">органичной частью</span>
+        <span class="about__line">образа жизни</span>
+      </h2>
+
+      <img class="about__photo" src="img/about-portrait.png" width="204" height="267"
+        alt="Девушка в деловом костюме сидит в кресле">
+
+      <p class="about__text">
+        Амбициозный проект, расположенный в&nbsp;250&nbsp;м<br>
+        от&nbsp;береговой линии канала<br>
+        им.&nbsp;Москвы, соединяет удобную транспортную доступность, насыщенную
+        инфраструктуру и&nbsp;выразительную деловую архитектуру.
+      </p>
+    </div>
+  </section>
+
+  <!-- Блок 3: комфорт в цифрах -->
+  <section class="comfort">
+    <div class="comfort__inner">
+      <div class="comfort__content">
+        <h2 class="comfort__title">
+          <span class="comfort__line comfort__line--first">Комфорт,</span>
+          <span class="comfort__line">который можно</span>
+          <span class="comfort__line">измерить</span>
+        </h2>
+
+        <ul class="comfort__facts">
+          <li class="fact">
+            <span class="fact__value">от 80 м²</span>
+            <span class="fact__label">Площади помещений</span>
+          </li>
+          <li class="fact">
+            <span class="fact__value">40 м</span>
+            <span class="fact__label">Потолки офисных помещений</span>
+          </li>
+          <li class="fact">
+            <span class="fact__value">410 мест</span>
+            <span class="fact__label">На подземном<br>и надземном паркинге</span>
+          </li>
+          <li class="fact">
+            <span class="fact__value">45 сек</span>
+            <span class="fact__label">Ожидание лифта в часы пик</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="comfort__media">
+        <img class="comfort__sky" src="img/comfort-bg.png" alt="">
+        <img class="comfort__towers" src="img/comfort-towers.png" alt="Башни делового центра «Трейс»">
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -9,6 +9,11 @@
   --font: "LT Amber", "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --white: #fff;
   --accent: #4e6365;
+  --ink: #2b2b2b;
+  --line: #ced6d6;
+  --paper: #f4f6f6;
+  /* Широкий шрифт заголовков: LT Amber Wide из макета платный — пока Unbounded */
+  --font-wide: "LT Amber Wide", "Unbounded", var(--font);
 }
 
 body {
@@ -455,6 +460,211 @@ button.hero__step:not(.is-active):hover {
 .hero__title img {
   width: 100%;
   height: auto;
+}
+
+/* ===== Общее для блоков ниже первого экрана ===== */
+
+/* Размеры считаются от ширины, как в макете 1440: 1px макета = --k */
+.about,
+.comfort {
+  container-type: inline-size;
+  color: var(--ink);
+}
+
+.about__inner,
+.comfort__inner {
+  --k: calc(100cqw / 1440);
+}
+
+/* Метка раздела: номер в тёмном квадрате и название */
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.label__num {
+  width: 20px;
+  height: 20px;
+  background: var(--ink);
+  color: var(--white);
+  text-align: center;
+}
+
+/* Крупные заголовки — каждая строка отдельно, как в макете */
+.about__title,
+.comfort__title {
+  margin: 0;
+  font-family: var(--font-wide);
+  font-weight: 400;
+  font-size: calc(56 * var(--k));
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+
+.about__line,
+.comfort__line {
+  display: block;
+  white-space: nowrap;
+}
+
+/* ===== Блок 2: о проекте ===== */
+
+.about__inner {
+  position: relative;
+  height: calc(698 * var(--k));
+}
+
+.about .label {
+  position: absolute;
+  left: calc(32 * var(--k));
+  top: calc(70 * var(--k));
+}
+
+.about__title {
+  position: absolute;
+  z-index: 1; /* заголовок поверх фото, как в макете */
+  left: calc(434 * var(--k));
+  top: calc(134 * var(--k));
+}
+
+.about__line--first {
+  padding-left: calc(111 * var(--k));
+}
+
+.about__photo {
+  position: absolute;
+  left: calc(236 * var(--k));
+  top: calc(327 * var(--k));
+  width: calc(204 * var(--k));
+  height: calc(267 * var(--k));
+  object-fit: cover;
+  object-position: 50% 100%;
+}
+
+.about__text {
+  position: absolute;
+  left: calc(720 * var(--k));
+  top: calc(434 * var(--k));
+  width: calc(290 * var(--k));
+  margin: 0;
+  font-size: 18px;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+}
+
+/* ===== Блок 3: комфорт в цифрах ===== */
+
+.comfort {
+  background: var(--paper);
+}
+
+.comfort__inner {
+  display: flex;
+  gap: calc(32 * var(--k));
+  height: calc(800 * var(--k));
+  padding: calc(32 * var(--k)) 0 calc(32 * var(--k)) calc(32 * var(--k));
+}
+
+.comfort__content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.comfort__line--first {
+  padding-left: calc(44 * var(--k));
+}
+
+.comfort__facts {
+  display: flex;
+  flex-direction: column;
+  gap: calc(28 * var(--k));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Строка с цифрой: рамка вокруг значения, линия снизу, квадратик в углу */
+.fact {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+}
+
+.fact__value {
+  position: relative;
+  padding: calc(8 * var(--k)) calc(12 * var(--k));
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  font-family: var(--font-wide);
+  font-weight: 300;
+  font-size: calc(48 * var(--k));
+  line-height: 1;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.fact__value::after {
+  content: "";
+  position: absolute;
+  right: -8.5px;
+  bottom: 0;
+  width: 8px;
+  height: 8px;
+  background: var(--line);
+}
+
+.fact__label {
+  width: 252px;
+  padding: 12px;
+  box-sizing: content-box;
+  font-size: 18px;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+  text-align: right;
+}
+
+/* Картинка справа: небо (отражено, как в макете) и башни поверх */
+.comfort__media {
+  position: relative;
+  flex: none;
+  width: calc(720 * var(--k));
+  margin-top: calc(-31 * var(--k));
+  margin-bottom: calc(-31 * var(--k));
+  overflow: hidden;
+}
+
+.comfort__sky,
+.comfort__towers {
+  position: absolute;
+  max-width: none;
+}
+
+.comfort__sky {
+  left: calc(-400 * var(--k));
+  top: calc(-368 * var(--k));
+  width: calc(1398 * var(--k));
+  height: calc(1139 * var(--k));
+  opacity: 0.7;
+  transform: scaleX(-1);
+}
+
+.comfort__towers {
+  left: 0;
+  top: calc(-110 * var(--k));
+  width: 100%;
+  height: calc(1080 * var(--k));
+  object-fit: cover;
 }
 
 /* ===== Планшет ===== */
