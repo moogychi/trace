@@ -528,14 +528,15 @@ function splitChars(line) {
 if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   // Запуск при каждом появлении на экране (сверху или снизу),
   // сброс — когда элемент полностью ушёл с экрана
-  const replay = (trigger, anim, start = 'top 85%', end = 'bottom 15%') => {
+  // resetEl — чей уход с экрана сбрасывает анимацию (по умолчанию сам элемент)
+  const replay = (trigger, anim, start = 'top 85%', end = 'bottom 15%', resetEl = trigger) => {
     ScrollTrigger.create({
       trigger, start, end,
       onEnter: () => anim.play(),
       onEnterBack: () => anim.play(),
     });
     ScrollTrigger.create({
-      trigger, start: 'top bottom', end: 'bottom top',
+      trigger: resetEl, start: 'top bottom', end: 'bottom top',
       onLeave: () => anim.pause(0),
       onLeaveBack: () => anim.pause(0),
     });
@@ -543,8 +544,8 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   const timeline = () => gsap.timeline({ paused: true });
 
   // Заголовки: буквы по очереди выезжают снизу из-под края строки
-  document.querySelectorAll('.about__title, .comfort__title').forEach((title) => {
-    const chars = [...title.querySelectorAll('.about__line, .comfort__line')].flatMap(splitChars);
+  document.querySelectorAll('.about__title, .comfort__title, .dominant__title').forEach((title) => {
+    const chars = [...title.querySelectorAll('.about__line, .comfort__line, .dominant__line')].flatMap(splitChars);
     replay(title, timeline().from(chars, {
       yPercent: 110,
       duration: 0.8,
@@ -554,18 +555,20 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   });
 
   // Метка раздела и абзац — просто проявляются
-  document.querySelectorAll('.about .label, .about__text').forEach((el) => {
+  document.querySelectorAll('.about .label, .about__text, .dominant .label, .dominant__address').forEach((el) => {
     replay(el, timeline().from(el, { opacity: 0, duration: 0.8, ease: 'power1.out' }), 'top 90%');
   });
 
-  // Картинки: шторка снизу вверх, фото внутри чуть отдаляется,
+  // Картинки: шторка снизу вверх (начинается, как только картинка показалась
+  // из-под нижнего края), фото внутри заметно отдаляется,
   // дальше при скролле фото движется медленнее страницы (параллакс)
   const reveal = (frame, img, zoomFrom) => {
     replay(frame, timeline()
       .fromTo(frame,
         { clipPath: 'inset(100% 0% 0% 0%)' },
         { clipPath: 'inset(0% 0% 0% 0%)', duration: 2, ease: 'power2.inOut' })
-      .from(img, { scale: zoomFrom, duration: 2.6, ease: 'power2.out' }, 0));
+      .from(img, { scale: zoomFrom, duration: 2.8, ease: 'power2.out' }, 0),
+    'top 98%');
   };
   const parallax = (frame, img, from, to) => {
     gsap.fromTo(img, { y: from }, {
@@ -577,8 +580,36 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
 
   const photoFrame = document.querySelector('.about__photo');
   const photo = photoFrame.querySelector('img');
-  reveal(photoFrame, photo, 1.1);
-  parallax(photoFrame, photo, '-4%', '4%');
+  reveal(photoFrame, photo, 1.35);
+  parallax(photoFrame, photo, '-7%', '7%');
+
+  const dominantFrame = document.querySelector('.dominant__photo');
+  const dominantPhoto = dominantFrame.querySelector('img');
+  reveal(dominantFrame, dominantPhoto, 1.35);
+  parallax(dominantFrame, dominantPhoto, '-7%', '7%');
+
+  // Блок «Локация»: текст проявляется, бирюзовая плашка прочерчивается
+  // под словами «7 трлн рублей инвестиций», от неё к центру блока бежит линия,
+  // на стыке появляется квадратик
+  const dominantText = document.querySelector('.dominant__text');
+  const mark = dominantText.querySelector('.dominant__mark');
+  const [linkMain, linkBar] = document.querySelectorAll('.dominant__link path');
+  const draw = (path) => {
+    const length = path.getTotalLength();
+    return [path, { strokeDasharray: length, strokeDashoffset: length }, { strokeDashoffset: 0 }];
+  };
+  const [mainEl, mainFrom, mainTo] = draw(linkMain);
+  const [barEl, barFrom, barTo] = draw(linkBar);
+
+  replay(dominantText, timeline()
+    .from(dominantText, { opacity: 0, duration: 0.8, ease: 'power1.out' })
+    .fromTo(mark,
+      { backgroundSize: '0% 100%', color: '#2b2b2b' },
+      { backgroundSize: '100% 100%', color: '#ffffff', duration: 0.9, ease: 'power2.inOut' }, 0.4)
+    .fromTo(mainEl, mainFrom, { ...mainTo, duration: 1.6, ease: 'power2.inOut' }, 1.1)
+    .fromTo(barEl, barFrom, { ...barTo, duration: 0.6, ease: 'power2.out' }, 2.5)
+    .from('.dominant__dot', { scale: 0, duration: 0.5, ease: 'back.out(3)' }, 2.5),
+  'top 95%', 'bottom 15%', document.querySelector('.dominant__inner'));
 
   const media = document.querySelector('.comfort__media');
   const towers = media.querySelector('.comfort__towers');
