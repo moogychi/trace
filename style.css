@@ -191,12 +191,10 @@ a {
   max-width: none;
 }
 
-/* Глубина: стена с тенью медленно смещается вбок, девушка чуть приближается */
 .hero__wall {
   inset: 0;
   width: 100%;
   height: 100%;
-  animation: wall-drift 28s ease-in-out infinite alternate;
 }
 
 .hero__woman {
@@ -205,26 +203,6 @@ a {
   width: 50.84%;
   height: 90.44%;
   transform: scaleX(-1);
-  transform-origin: 50% 100%;
-  animation: woman-near 28s ease-in-out infinite alternate;
-}
-
-@keyframes wall-drift {
-  from {
-    transform: scale(1.06) translateX(1.5%);
-  }
-  to {
-    transform: scale(1.06) translateX(-2.5%);
-  }
-}
-
-@keyframes woman-near {
-  from {
-    transform: scale(-1, 1);
-  }
-  to {
-    transform: scale(-1.045, 1.045);
-  }
 }
 
 /* Мягкое пятно света медленно проходит по стене (за девушкой) */
@@ -619,11 +597,9 @@ button.hero__step:not(.is-active):hover {
   }
 }
 
-/* Если в системе просят меньше анимаций — небо, второй слайд и точка стоят на месте */
+/* Если в системе просят меньше анимаций — небо, свет на стене и точка стоят на месте */
 @media (prefers-reduced-motion: reduce) {
   .hero__sky img,
-  .hero__wall,
-  .hero__woman,
   .hero__light,
   .header__action-icon img,
   .header__action-icon::before,
