@@ -201,18 +201,6 @@ function snapshot(slide, width, height, dpr) {
       else ctx.rect(x - far, y, r.width, r.height);
       ctx.fill();
       ctx.restore();
-    } else if (el.classList.contains('hero__light')) {
-      // Пятно света на стене: осветление, как mix-blend-mode: screen
-      const g = ctx.createLinearGradient(x, 0, x + r.width, 0);
-      g.addColorStop(0, 'rgba(255,255,255,0)');
-      g.addColorStop(0.5, 'rgba(255,255,255,0.22)');
-      g.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.save();
-      ctx.globalAlpha = parseFloat(getComputedStyle(el).opacity);
-      ctx.globalCompositeOperation = 'screen';
-      ctx.fillStyle = g;
-      ctx.fillRect(x, y, r.width, r.height);
-      ctx.restore();
     } else if (el.classList.contains('hero__shade')) {
       const g = ctx.createLinearGradient(0, y, 0, y + r.height);
       g.addColorStop(0, 'rgba(0,0,0,0.18)');
@@ -532,11 +520,11 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
 
   // Метка раздела и абзац — просто проявляются
   document.querySelectorAll('.about .label, .about__text').forEach((el) => {
-    replay(el, timeline().from(el, { opacity: 0, duration: 1.6, ease: 'power1.inOut' }), 'top 90%');
+    replay(el, timeline().from(el, { opacity: 0, duration: 0.8, ease: 'power1.out' }), 'top 90%');
   });
 
-  // Картинки: шторка снизу вверх, фото внутри чуть отдаляется,
-  // дальше при скролле фото движется медленнее страницы (параллакс)
+  // Картинки: шторка снизу вверх, фото внутри чуть отдаляется;
+  // башни дальше при скролле движутся медленнее страницы (параллакс)
   const reveal = (frame, img, zoomFrom) => {
     replay(frame, timeline()
       .fromTo(frame,
@@ -554,8 +542,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
 
   const photoFrame = document.querySelector('.about__photo');
   const photo = photoFrame.querySelector('img');
-  reveal(photoFrame, photo, 1.2);
-  parallax(photoFrame, photo, '-8%', '8%');
+  reveal(photoFrame, photo, 1.1); // маленькое фото — без параллакса, стоит как в макете
 
   const media = document.querySelector('.comfort__media');
   const towers = media.querySelector('.comfort__towers');
@@ -565,13 +552,19 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
   parallax(media, media.querySelector('.comfort__sky'), 25, -25); // небо медленнее — глубина
 
   // Цифры: строки по очереди — рамка прорисовывается слева направо,
-  // цифра набегает от 0, линия под строкой прочерчивается, подпись проявляется
+  // цифра спокойно набегает, линия под строкой прочерчивается, подпись проявляется
   document.querySelectorAll('.fact').forEach((fact, i) => {
     const value = fact.querySelector('.fact__value');
     const num = fact.querySelector('.fact__num');
     const target = Number(num.textContent);
     // Ширина конечного числа (меряем после загрузки шрифта) — рамка не прыгает
-    document.fonts.ready.then(() => { num.style.minWidth = `${num.offsetWidth}px`; });
+    document.fonts.ready.then(() => {
+      const shown = num.textContent;
+      num.style.minWidth = '';
+      num.textContent = target;
+      num.style.minWidth = `${num.offsetWidth}px`;
+      num.textContent = shown;
+    });
     const counter = { n: 0 };
     const at = i * 0.25; // строки по очереди
 
@@ -580,13 +573,45 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
       .fromTo(value,
         { clipPath: 'inset(0% 100% 0% 0%)' },
         { clipPath: 'inset(0% -12px 0% 0%)', duration: 1.5, ease: 'power2.out' }, at + 0.15)
-      .fromTo(counter, { n: 0 }, {
+      // Спокойный счётчик: не с нуля, а примерно с 60% значения
+      .fromTo(counter, { n: Math.round(target * 0.6) }, {
         n: target,
-        duration: 2.2,
-        ease: 'power2.out',
+        duration: 2.4,
+        ease: 'power3.out',
         onUpdate: () => { num.textContent = Math.round(counter.n); },
       }, at + 0.15)
-      .from(fact.querySelector('.fact__label'), { opacity: 0, duration: 1.4, ease: 'power1.inOut' }, at + 0.5),
+      .from(fact.querySelector('.fact__label'), { opacity: 0, duration: 0.8, ease: 'power1.out' }, at + 0.5),
     'top 85%', 'bottom 15%');
+  });
+}
+
+
+// ===== Облака на первом слайде без конца плывут вверх (GSAP) =====
+//
+// Два одинаковых слоя облаков со сдвигом на полцикла: верхний (B) плавно
+// исчезает и появляется, прикрывая момент, когда нижний (A) начинает путь
+// заново, — поэтому движение непрерывное. Пока первый слайд скрыт или идёт
+// смена через стекло, облака стоят и потом продолжают с того же места.
+
+const cloudLayers = hero.querySelectorAll('.hero__clouds');
+
+if (window.gsap && cloudLayers.length === 2 && !reduceMotion.matches) {
+  const [cloudsA, cloudsB] = cloudLayers;
+  const CYCLE = 24; // секунд на один проход снизу вверх
+  const half = CYCLE / 2;
+  const fade = CYCLE * 0.15;
+
+  const clouds = gsap.timeline({ repeat: -1 })
+    .fromTo(cloudsA, { yPercent: 12 }, { yPercent: -12, duration: CYCLE, ease: 'none' }, 0)
+    // B начинает с середины пути: первую половину цикла доезжает до конца…
+    .fromTo(cloudsB, { yPercent: 0, opacity: 1 }, { yPercent: -12, duration: half, ease: 'none' }, 0)
+    .to(cloudsB, { opacity: 0, duration: fade, ease: 'none' }, half - fade)
+    // …а вторую — снова снизу до середины, проявляясь
+    .fromTo(cloudsB, { yPercent: 12 }, { yPercent: 0, duration: half, ease: 'none', immediateRender: false }, half)
+    .to(cloudsB, { opacity: 1, duration: fade, ease: 'none' }, half);
+
+  gsap.ticker.add(() => {
+    const run = slides[0].classList.contains('is-active') && !hero.classList.contains('is-glass');
+    if (clouds.paused() === run) clouds.paused(!run);
   });
 }

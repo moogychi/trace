@@ -96,37 +96,10 @@ a {
   height: 100%;
 }
 
-/* Небо без конца плывёт вверх. Облака — два одинаковых слоя со сдвигом на
-   полцикла: верхний плавно появляется и исчезает, прикрывая момент, когда
-   нижний начинает путь заново. Поэтому движение непрерывное */
+/* Облака без конца плывут вверх — движением управляет script.js (GSAP).
+   Здесь только начальное увеличение с запасом под движение */
 .hero__clouds {
   transform: scale(1.4);
-  animation: sky-rise 24s linear infinite;
-}
-
-.hero__clouds + .hero__clouds {
-  animation:
-    sky-rise 24s linear infinite,
-    clouds-fade 24s linear infinite;
-  animation-delay: -12s;
-}
-
-@keyframes sky-rise {
-  from {
-    transform: scale(1.4) translate3d(0, 12%, 0);
-  }
-  to {
-    transform: scale(1.4) translate3d(0, -12%, 0);
-  }
-}
-
-@keyframes clouds-fade {
-  0%, 100% {
-    opacity: 0;
-  }
-  15%, 85% {
-    opacity: 1;
-  }
 }
 
 /* Движение на скрытом слайде и во время смены стоит на паузе: при возвращении
@@ -204,33 +177,6 @@ a {
   width: 50.84%;
   height: 90.44%;
   transform: scaleX(-1);
-}
-
-/* Мягкое пятно света медленно проходит по стене (за девушкой) */
-.hero__light {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 30%;
-  opacity: 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
-  mix-blend-mode: screen;
-  animation: light-pass 18s ease-in-out infinite;
-}
-
-@keyframes light-pass {
-  0% {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-  20%, 80% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateX(333%);
-    opacity: 0;
-  }
 }
 
 /* ----- Шапка ----- */
@@ -507,7 +453,7 @@ button.hero__step:not(.is-active):hover {
   font-family: var(--font-wide);
   font-weight: 400;
   font-size: calc(56 * var(--k));
-  line-height: 1.05;
+  line-height: 0.95;
   letter-spacing: -0.01em;
   text-transform: uppercase;
 }
@@ -561,13 +507,12 @@ button.hero__step:not(.is-active):hover {
   overflow: hidden;
 }
 
-/* Фото выше рамки на 20% — запас для параллакса при скролле */
 .about__photo img {
   position: absolute;
   left: 0;
-  top: -10%;
+  top: 0;
   width: 100%;
-  height: 120%;
+  height: 100%;
   object-fit: cover;
   object-position: 50% 100%;
 }
@@ -833,10 +778,9 @@ button.hero__step:not(.is-active):hover {
   }
 }
 
-/* Если в системе просят меньше анимаций — небо, свет на стене и точка стоят на месте */
+/* Если в системе просят меньше анимаций — точка стоит на месте
+   (облака и анимации блоков в этом случае выключает script.js) */
 @media (prefers-reduced-motion: reduce) {
-  .hero__sky img,
-  .hero__light,
   .header__action-icon img,
   .header__action-icon::before,
   .header__action-icon::after {
