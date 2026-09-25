@@ -102,13 +102,6 @@ a {
   transform: scale(1.4);
 }
 
-/* Движение на скрытом слайде и во время смены стоит на паузе: при возвращении
-   продолжается с того же места, а «фото» для стекла совпадает с экраном */
-.hero__slide:not(.is-active) *,
-.hero.is-glass .hero__slide * {
-  animation-play-state: paused;
-}
-
 /* Холст со стеклом (рисуется в script.js), виден только во время смены */
 .hero__glass {
   position: absolute;
@@ -505,14 +498,16 @@ button.hero__step:not(.is-active):hover {
   width: calc(204 * var(--k));
   height: calc(267 * var(--k));
   overflow: hidden;
+  transform: scaleX(-1); /* в макете фото отзеркалено */
 }
 
+/* Фото чуть выше рамки (на 10%) — небольшой запас для параллакса при скролле */
 .about__photo img {
   position: absolute;
   left: 0;
-  top: 0;
+  top: -5%;
   width: 100%;
-  height: 100%;
+  height: 110%;
   object-fit: cover;
   object-position: 50% 100%;
 }

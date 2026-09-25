@@ -35,6 +35,7 @@ const hero = document.querySelector('.hero');
 const bg = hero.querySelector('.hero__bg');
 const glassCanvas = hero.querySelector('.hero__glass');
 const ACCENT = '#4e6365';
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
 const GLASS_TIME = 4600; // длительность перехода, мс
 const SWAP_AT = 0.5;     // когда под холстом меняется настоящий слайд
@@ -310,14 +311,27 @@ glassCanvas.addEventListener('webglcontextlost', () => {
 
 const slides = hero.querySelectorAll('.hero__slide');
 const steps = hero.querySelectorAll('button.hero__step');
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const delay = 9000;
 let current = 0;
 let timer;
 let busy = false;
+let clouds = null; // движение облаков (GSAP), создаётся ниже
+
+// Облака плывут, только пока открыт первый слайд и не идёт смена через стекло
+function syncClouds() {
+  if (!clouds) return;
+  clouds.paused(!slides[0].classList.contains('is-active') || hero.classList.contains('is-glass'));
+}
 
 function setSlide(index) {
   slides.forEach((slide, i) => slide.classList.toggle('is-active', i === index));
+  syncClouds();
+}
+
+// Во время смены через стекло всё движение в слайдах замирает — «фото» совпадает с экраном
+function setGlass(on) {
+  hero.classList.toggle('is-glass', on);
+  syncClouds();
 }
 
 function setSteps(index) {
@@ -337,13 +351,13 @@ function startTimer() {
 // Переход через стекло. Если стекло недоступно — просто плавная смена
 function transition(from, to) {
   busy = true;
-  hero.classList.add('is-glass'); // небо замирает, чтобы «фото» совпало с экраном
+  setGlass(true);
 
   try {
     if (!glass || reduceMotion.matches) throw new Error('no glass');
     glass.prepare(slides[from], slides[to]);
   } catch (err) {
-    hero.classList.remove('is-glass');
+    setGlass(false);
     setSlide(to);
     setTimeout(() => { busy = false; }, 700);
     return;
@@ -360,7 +374,7 @@ function transition(from, to) {
     if (!glass) {
       setSlide(to);
       glassCanvas.classList.remove('is-on');
-      hero.classList.remove('is-glass');
+      setGlass(false);
       busy = false;
       return;
     }
@@ -377,7 +391,7 @@ function transition(from, to) {
       requestAnimationFrame(frame);
     } else {
       glassCanvas.classList.remove('is-on');
-      hero.classList.remove('is-glass');
+      setGlass(false);
       busy = false;
     }
   }
@@ -425,6 +439,27 @@ hero.addEventListener('touchend', (e) => {
   }
   touch = null;
 });
+
+// Облака на первом слайде без конца плывут вверх. Два одинаковых слоя со сдвигом
+// на полцикла: верхний (B) плавно исчезает и появляется, прикрывая момент,
+// когда нижний (A) начинает путь заново, — поэтому движение непрерывное.
+const cloudLayers = hero.querySelectorAll('.hero__clouds');
+
+if (window.gsap && cloudLayers.length === 2 && !reduceMotion.matches) {
+  const [cloudsA, cloudsB] = cloudLayers;
+  const CYCLE = 24; // секунд на один проход снизу вверх
+  const half = CYCLE / 2;
+  const fade = CYCLE * 0.15;
+
+  clouds = gsap.timeline({ repeat: -1 })
+    .fromTo(cloudsA, { yPercent: 12 }, { yPercent: -12, duration: CYCLE, ease: 'none' }, 0)
+    // B начинает с середины пути: первую половину цикла доезжает до конца…
+    .fromTo(cloudsB, { yPercent: 0, opacity: 1 }, { yPercent: -12, duration: half, ease: 'none' }, 0)
+    .to(cloudsB, { opacity: 0, duration: fade, ease: 'none' }, half - fade)
+    // …а вторую — снова снизу до середины, проявляясь
+    .fromTo(cloudsB, { yPercent: 12 }, { yPercent: 0, duration: half, ease: 'none', immediateRender: false }, half)
+    .to(cloudsB, { opacity: 1, duration: fade, ease: 'none' }, half);
+}
 
 show(0, false);
 
@@ -512,9 +547,9 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     const chars = [...title.querySelectorAll('.about__line, .comfort__line')].flatMap(splitChars);
     replay(title, timeline().from(chars, {
       yPercent: 110,
-      duration: 1.1,
+      duration: 0.8,
       ease: 'power2.out',
-      stagger: 0.024,
+      stagger: 0.016,
     }));
   });
 
@@ -523,8 +558,8 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     replay(el, timeline().from(el, { opacity: 0, duration: 0.8, ease: 'power1.out' }), 'top 90%');
   });
 
-  // Картинки: шторка снизу вверх, фото внутри чуть отдаляется;
-  // башни дальше при скролле движутся медленнее страницы (параллакс)
+  // Картинки: шторка снизу вверх, фото внутри чуть отдаляется,
+  // дальше при скролле фото движется медленнее страницы (параллакс)
   const reveal = (frame, img, zoomFrom) => {
     replay(frame, timeline()
       .fromTo(frame,
@@ -542,7 +577,8 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
 
   const photoFrame = document.querySelector('.about__photo');
   const photo = photoFrame.querySelector('img');
-  reveal(photoFrame, photo, 1.1); // маленькое фото — без параллакса, стоит как в макете
+  reveal(photoFrame, photo, 1.1);
+  parallax(photoFrame, photo, '-4%', '4%');
 
   const media = document.querySelector('.comfort__media');
   const towers = media.querySelector('.comfort__towers');
@@ -557,14 +593,7 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     const value = fact.querySelector('.fact__value');
     const num = fact.querySelector('.fact__num');
     const target = Number(num.textContent);
-    // Ширина конечного числа (меряем после загрузки шрифта) — рамка не прыгает
-    document.fonts.ready.then(() => {
-      const shown = num.textContent;
-      num.style.minWidth = '';
-      num.textContent = target;
-      num.style.minWidth = `${num.offsetWidth}px`;
-      num.textContent = shown;
-    });
+    num.dataset.target = target;
     const counter = { n: 0 };
     const at = i * 0.25; // строки по очереди
 
@@ -573,45 +602,27 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
       .fromTo(value,
         { clipPath: 'inset(0% 100% 0% 0%)' },
         { clipPath: 'inset(0% -12px 0% 0%)', duration: 1.5, ease: 'power2.out' }, at + 0.15)
-      // Спокойный счётчик: не с нуля, а примерно с 60% значения
-      .fromTo(counter, { n: Math.round(target * 0.6) }, {
+      // Спокойный счётчик: начинает близко к итогу (~90%) и быстро доходит
+      .fromTo(counter, { n: Math.round(target * 0.9) }, {
         n: target,
-        duration: 2.4,
-        ease: 'power3.out',
+        duration: 1.4,
+        ease: 'power2.out',
         onUpdate: () => { num.textContent = Math.round(counter.n); },
       }, at + 0.15)
       .from(fact.querySelector('.fact__label'), { opacity: 0, duration: 0.8, ease: 'power1.out' }, at + 0.5),
     'top 85%', 'bottom 15%');
   });
-}
 
-
-// ===== Облака на первом слайде без конца плывут вверх (GSAP) =====
-//
-// Два одинаковых слоя облаков со сдвигом на полцикла: верхний (B) плавно
-// исчезает и появляется, прикрывая момент, когда нижний (A) начинает путь
-// заново, — поэтому движение непрерывное. Пока первый слайд скрыт или идёт
-// смена через стекло, облака стоят и потом продолжают с того же места.
-
-const cloudLayers = hero.querySelectorAll('.hero__clouds');
-
-if (window.gsap && cloudLayers.length === 2 && !reduceMotion.matches) {
-  const [cloudsA, cloudsB] = cloudLayers;
-  const CYCLE = 24; // секунд на один проход снизу вверх
-  const half = CYCLE / 2;
-  const fade = CYCLE * 0.15;
-
-  const clouds = gsap.timeline({ repeat: -1 })
-    .fromTo(cloudsA, { yPercent: 12 }, { yPercent: -12, duration: CYCLE, ease: 'none' }, 0)
-    // B начинает с середины пути: первую половину цикла доезжает до конца…
-    .fromTo(cloudsB, { yPercent: 0, opacity: 1 }, { yPercent: -12, duration: half, ease: 'none' }, 0)
-    .to(cloudsB, { opacity: 0, duration: fade, ease: 'none' }, half - fade)
-    // …а вторую — снова снизу до середины, проявляясь
-    .fromTo(cloudsB, { yPercent: 12 }, { yPercent: 0, duration: half, ease: 'none', immediateRender: false }, half)
-    .to(cloudsB, { opacity: 1, duration: fade, ease: 'none' }, half);
-
-  gsap.ticker.add(() => {
-    const run = slides[0].classList.contains('is-active') && !hero.classList.contains('is-glass');
-    if (clouds.paused() === run) clouds.paused(!run);
+  // Когда загрузился шрифт: фиксируем ширину чисел по итоговому значению
+  // (рамка не прыгает во время счёта) и пересчитываем позиции анимаций
+  document.fonts.ready.then(() => {
+    document.querySelectorAll('.fact__num').forEach((num) => {
+      const shown = num.textContent;
+      num.style.minWidth = '';
+      num.textContent = num.dataset.target;
+      num.style.minWidth = `${num.offsetWidth}px`;
+      num.textContent = shown;
+    });
+    ScrollTrigger.refresh();
   });
 }
