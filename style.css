@@ -493,7 +493,7 @@ button.hero__step:not(.is-active):hover {
 
 .about__photo {
   position: absolute;
-  left: calc(236 * var(--k));
+  left: calc(32 * var(--k)); /* у левого края, под меткой раздела */
   top: calc(327 * var(--k));
   width: calc(204 * var(--k));
   height: calc(267 * var(--k));
@@ -501,22 +501,22 @@ button.hero__step:not(.is-active):hover {
   transform: scaleX(-1); /* в макете фото отзеркалено */
 }
 
-/* Фото чуть выше рамки (на 10%) — небольшой запас для параллакса при скролле */
+/* Как в макете: фото целиком вписано в рамку (с креслом и коленями).
+   Запас 10% одинаковый по ширине и высоте — для параллакса, пропорции не меняются */
 .about__photo img {
   position: absolute;
-  left: 0;
+  left: -5%;
   top: -5%;
-  width: 100%;
+  width: 110%;
   height: 110%;
-  object-fit: cover;
-  object-position: 50% 100%;
+  object-fit: fill;
 }
 
 .about__text {
   position: absolute;
   left: calc(720 * var(--k));
   top: calc(434 * var(--k));
-  width: calc(290 * var(--k));
+  white-space: nowrap; /* строки переносятся как в макете */
   margin: 0;
   font-size: 18px;
   line-height: 20px;
