@@ -115,7 +115,7 @@ void main() {
   // Размытие: лёгкая матовость стекла + умеренная вспышка на смене фото
   // (к центру экрана сильнее)
   float centre = smoothstep(0.0, 1.0, 1.0 - abs(2.0 * vUv.x - 1.0));
-  float radius = (power * 3.6 + blurCurve(uT) * mix(25.0, 36.0, centre) * mix(0.8, 1.0, power)) * uDpr;
+  float radius = (power * 2.9 + blurCurve(uT) * mix(20.0, 29.0, centre) * mix(0.8, 1.0, power)) * uDpr;
 
   vec3 col;
   if (uMix <= 0.0) col = blurred(uA, uv, radius);
