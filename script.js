@@ -688,16 +688,18 @@ menuPhotos[menuPhotoIndex].classList.add('is-shown');
 
 function buildMenuTimeline() {
   return gsap.timeline({ paused: true })
+    // белая шторка раскрывается сверху вниз (её содержимое стоит на месте)
     .fromTo(menuPanel,
       { clipPath: 'inset(0% 0% 100% 0%)' },
-      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1, ease: 'power3.inOut' }, 0)
-    // стекло стартует чуть позже и идёт внахлёст — одно движение, а не два шага
+      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.1, ease: 'power3.inOut' }, 0)
+    // стекло — вторая шторка: съезжает сверху и выходит из-под белой примерно
+    // на середине её пути, дальше они едут вместе — одно гладкое движение
     .fromTo(menuGlass,
-      { clipPath: 'inset(0% 0% 100% 0%)' },
-      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.1, ease: 'power3.inOut' }, 0.15)
+      { yPercent: -100 },
+      { yPercent: 0, duration: 1.15, ease: 'power2.inOut' }, 0.1)
     .fromTo(menuFade,
       { opacity: 0 },
-      { opacity: 1, duration: 0.6, ease: 'power1.out', stagger: 0.05 }, 0.6);
+      { opacity: 1, duration: 0.6, ease: 'power1.out', stagger: 0.05 }, 0.7);
 }
 
 function openFullMenu() {

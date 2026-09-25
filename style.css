@@ -880,16 +880,6 @@ button.hero__step:not(.is-active):hover {
   object-fit: cover;
 }
 
-/* Интерьер кадрирован как в макете: видна левая часть с креслами */
-.menu__photo .menu__interior {
-  inset: auto;
-  left: -12.25%;
-  top: -17.6%;
-  width: 276.5%;
-  height: 117.6%;
-  object-fit: fill;
-}
-
 .menu__contacts {
   position: absolute;
   right: calc(20 * var(--k));
