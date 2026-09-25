@@ -25,17 +25,18 @@ document.addEventListener('click', (e) => {
 // ===== Ребристое стекло для смены слайдов (WebGL) =====
 //
 // В начале перехода оба слайда «фотографируются» в картинки, дальше
-// видеокарта рисует поверх них стекло: рёбра наезжают с краёв к центру,
-// размытие растёт к центру экрана, на пике фото меняется, потом рёбра
-// расходятся от центра к краям. В конце холст прячется, и под ним уже
-// настоящий новый слайд — выглядит точно так же, поэтому шва не видно.
+// видеокарта рисует поверх них стекло одной волной: рёбра накатывают
+// от краёв к центру и сразу откатываются, размытие плавно растёт и спадает,
+// в самой размытой точке меняется фото, по рёбрам бежит свет. В конце холст
+// прячется, и под ним уже настоящий новый слайд — выглядит точно так же,
+// поэтому шва не видно.
 
 const hero = document.querySelector('.hero');
 const bg = hero.querySelector('.hero__bg');
 const glassCanvas = hero.querySelector('.hero__glass');
 const ACCENT = '#4e6365';
 
-const GLASS_TIME = 4200; // длительность перехода, мс
+const GLASS_TIME = 4600; // длительность перехода, мс
 const SWAP_AT = 0.5;     // когда под холстом меняется настоящий слайд
 
 const VERTEX = `#version 300 es
@@ -54,26 +55,31 @@ uniform vec2 uRes;         // размер холста в пикселях
 uniform float uT;          // ход перехода 0…1
 uniform float uMix;        // доля нового слайда
 uniform float uStrip;      // ширина ребра в пикселях
-uniform float uCount;      // сколько рёбер
 uniform float uDpr;
+uniform float uTime;       // секунды с начала перехода — для бегущего света
 in vec2 vUv;
 out vec4 outColor;
+
+const float PI = 3.14159265;
 
 float ease(float x) {
   x = clamp(x, 0.0, 1.0);
   return x < 0.5 ? 4.0 * x * x * x : 1.0 - pow(-2.0 * x + 2.0, 3.0) / 2.0;
 }
 
-// Насколько ребро i «под стеклом»:
-// 0–0.38 наезжает от краёв к центру, 0.38–0.62 экран закрыт,
-// 0.62–1 уходит от центра к краям
-float stripPower(float i) {
-  float c = (i + 0.5) / uCount;
-  float p = 1.0 - abs(2.0 * c - 1.0); // 0 у краёв, 1 в центре
-  float spread = 0.6;
-  if (uT < 0.38) return ease((uT / 0.38 - p * spread) / (1.0 - spread));
-  if (uT < 0.62) return 1.0;
-  return 1.0 - ease(((uT - 0.62) / 0.38 - (1.0 - p) * spread) / (1.0 - spread));
+// Плавный «холм» 0 → 1 → 0
+float bell(float x) {
+  x = clamp(x, 0.0, 1.0);
+  return 0.5 - 0.5 * cos(2.0 * PI * x);
+}
+
+// Насколько место «под стеклом». Одна непрерывная волна: стекло накатывает
+// от краёв к центру и тут же откатывается обратно, без остановки
+float glassPower(float x) {
+  float p = 1.0 - abs(2.0 * x - 1.0); // 0 у краёв, 1 в центре
+  float comeIn = ease((uT / 0.6 - p * 0.5) / 0.5);
+  float goOut = 1.0 - ease(((uT - 0.4) / 0.6 - (1.0 - p) * 0.5) / 0.5);
+  return comeIn * goOut;
 }
 
 // Размытие: уменьшенная копия картинки (mip) + 16 точек по спирали
@@ -93,37 +99,43 @@ vec3 blurred(sampler2D tex, vec2 uv, float radius) {
 
 void main() {
   vec2 px = vUv * uRes;
-  float i = floor(px.x / uStrip);
-  float local = fract(px.x / uStrip); // 0…1 поперёк ребра
-  float power = stripPower(i);
+  float power = glassPower(vUv.x);
 
-  // Ребро — выпуклая линза: картинка внутри отражается и растягивается
+  // Рёбра медленно плывут вбок, пока идёт переход
+  float ribX = px.x + uT * uStrip * 1.5;
+  float i = floor(ribX / uStrip);
+  float local = fract(ribX / uStrip); // 0…1 поперёк ребра
   float nx = local * 2.0 - 1.0;
-  float shift = nx * uStrip * 0.9 * power;
-  if (i < 0.5) shift = max(shift, 0.0);             // у краёв экрана
-  if (i > uCount - 1.5) shift = min(shift, 0.0);    // берём картинку изнутри
+
+  // Ребро — выпуклая линза: картинка внутри мягко отражается
+  float shift = nx * uStrip * 0.6 * power;
   vec2 uv = vUv + vec2(shift / uRes.x, 0.0);
 
-  // Прогрессивное размытие: у краёв экрана слабее, к центру сильнее,
-  // а на пике перехода сильное везде — картинку не различить, фото меняется незаметно
+  // Размытие плавно растёт и спадает за весь переход; к центру экрана сильнее.
+  // На пике картинку не различить — там и меняется фото
   float centre = smoothstep(0.0, 1.0, 1.0 - abs(2.0 * vUv.x - 1.0));
-  float peak = ease(1.0 - abs(uT - 0.5) / 0.22);
-  float radius = power * (mix(16.0, 70.0, centre) + 60.0 * peak) * uDpr;
+  float radius = bell(uT) * mix(70.0, 95.0, centre) * mix(0.8, 1.0, power) * uDpr;
 
   vec3 col;
   if (uMix <= 0.0) col = blurred(uA, uv, radius);
   else if (uMix >= 1.0) col = blurred(uB, uv, radius);
   else col = mix(blurred(uA, uv, radius), blurred(uB, uv, radius), uMix);
 
-  // Объём ребра: свет сверху-справа, тень в стыке, светлая кромка
+  // Объём ребра — мягко, без тёмных обводок
   float bulge = sqrt(max(0.0, 1.0 - nx * nx));
-  float shade = mix(0.74, 1.08, bulge);
-  float crease = 1.0 - smoothstep(0.0, 0.07, local);         // тень слева
-  float lip = smoothstep(0.93, 1.0, local);                   // кромка справа
-  float spec = smoothstep(0.55, 0.78, local) * (1.0 - smoothstep(0.78, 0.92, local));
+  float shade = mix(0.93, 1.03, bulge);
+  float crease = (1.0 - smoothstep(0.0, 0.06, local)) * 0.1;
 
-  col *= mix(1.0, shade * (1.0 - crease * 0.45), power);
-  col += (spec * 0.16 + lip * 0.22) * power;
+  // Блик на каждом ребре слегка «гуляет» туда-сюда
+  float specPos = 0.66 + 0.14 * sin(uTime * 1.6 + i * 0.7);
+  float spec = exp(-pow((local - specPos) / 0.09, 2.0));
+
+  // Световая волна бежит по диагонали через все рёбра — перелив
+  float diag = (px.x + px.y * 0.8) / (uStrip * 11.0) - uTime * 0.3;
+  float sweep = pow(0.5 + 0.5 * cos(2.0 * PI * diag), 14.0);
+
+  col *= mix(1.0, shade * (1.0 - crease), power);
+  col += (spec * 0.08 + sweep * (0.04 + 0.1 * bulge)) * power;
 
   outColor = vec4(col, 1.0);
 }`;
@@ -233,7 +245,7 @@ function createGlass() {
   gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
   const u = {};
-  ['uA', 'uB', 'uRes', 'uT', 'uMix', 'uStrip', 'uCount', 'uDpr'].forEach((name) => {
+  ['uA', 'uB', 'uRes', 'uT', 'uMix', 'uStrip', 'uDpr', 'uTime'].forEach((name) => {
     u[name] = gl.getUniformLocation(program, name);
   });
   gl.uniform1i(u.uA, 0);
@@ -266,16 +278,16 @@ function createGlass() {
       const strip = Math.max(40, Math.round(width / 20)) * dpr;
       gl.uniform2f(u.uRes, glassCanvas.width, glassCanvas.height);
       gl.uniform1f(u.uStrip, strip);
-      gl.uniform1f(u.uCount, Math.ceil(glassCanvas.width / strip));
       gl.uniform1f(u.uDpr, dpr);
 
       upload(0, snapshot(fromSlide, width, height, dpr));
       upload(1, snapshot(toSlide, width, height, dpr));
     },
-    draw(t) {
+    draw(t, seconds = 0) {
       gl.uniform1f(u.uT, t);
-      // Фото меняется только на пике: экран закрыт и сильно размыт
-      const m = Math.min(Math.max((t - 0.42) / 0.16, 0), 1);
+      gl.uniform1f(u.uTime, seconds);
+      // Фото меняется плавно в самой размытой части перехода
+      const m = Math.min(Math.max((t - 0.4) / 0.2, 0), 1);
       gl.uniform1f(u.uMix, m * m * (3 - 2 * m));
       gl.drawArrays(gl.TRIANGLES, 0, 3);
     },
@@ -339,7 +351,7 @@ function transition(from, to) {
     elapsed += Math.min(now - last, 50);
     last = now;
     const t = Math.min(elapsed / GLASS_TIME, 1);
-    glass.draw(t);
+    glass.draw(t, elapsed / 1000);
     if (t >= SWAP_AT && !swapped) {
       swapped = true;
       setSlide(to);

@@ -98,17 +98,22 @@ a {
   height: 100%;
 }
 
-/* Небо плывёт: облака (верхний слой) медленно едут и чуть приближаются */
+/* Небо плывёт вверх в ровном темпе. Каждый раз, когда слайд открывается,
+   движение начинается заново (под стеклом, поэтому незаметно) */
 .hero__sky img:nth-child(3) {
-  animation: sky-drift 22s ease-in-out infinite alternate;
+  transform: scale(1.25) translate3d(0, 6%, 0);
 }
 
-@keyframes sky-drift {
+.hero__slide.is-active .hero__sky img:nth-child(3) {
+  animation: sky-rise 36s linear forwards;
+}
+
+@keyframes sky-rise {
   from {
-    transform: scale(1.16) translate3d(-6%, 1%, 0);
+    transform: scale(1.25) translate3d(0, 6%, 0);
   }
   to {
-    transform: scale(1.2) translate3d(6%, -1.5%, 0);
+    transform: scale(1.25) translate3d(0, -6%, 0);
   }
 }
 
