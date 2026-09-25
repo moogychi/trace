@@ -107,10 +107,22 @@
     // Открытие меню на планшетах и телефонах
     const header = document.querySelector('.header');
     const toggle = document.querySelector('.header__toggle');
-    toggle.addEventListener('click', () => {
-      const open = header.classList.toggle('is-open');
+    function setMenu(open) {
+      header.classList.toggle('is-open', open);
       toggle.setAttribute('aria-expanded', open);
       toggle.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
+    }
+
+    toggle.addEventListener('click', () => setMenu(!header.classList.contains('is-open')));
+    // Закрываем меню: после выбора пункта, по Esc и по клику мимо
+    header.querySelectorAll('.header__nav a').forEach((link) => {
+      link.addEventListener('click', () => setMenu(false));
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setMenu(false);
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.header__nav, .header__toggle')) setMenu(false);
     });
 
     // Слайдер первого экрана: смена каждые 9 секунд, клик по номеру, свайп
@@ -127,19 +139,40 @@
       slides.forEach((slide, i) => slide.classList.toggle('is-active', i === index));
     }
 
-    function show(index, withGlass = true) {
-      const next = (index + slides.length) % slides.length;
-      const changed = next !== current;
-      current = next;
-      steps.forEach((step, i) => step.classList.toggle('is-active', i === current));
-      if (withGlass && changed && !reduceMotion.matches) {
-        glassRun(() => setSlide(current));
-      } else {
-        setSlide(current);
-      }
+    function setSteps(index) {
+      steps.forEach((step, i) => step.classList.toggle('is-active', i === index));
+    }
+
+    function startTimer() {
       clearTimeout(timer);
       timer = setTimeout(() => show(current + 1), delay);
     }
+
+    function show(index, withGlass = true) {
+      const next = (index + slides.length) % slides.length;
+      // Пока идёт переход или слайд уже открыт — ничего не делаем
+      if (glassBusy || (next === current && withGlass)) return;
+      current = next;
+      setSteps(current);
+      if (withGlass && !reduceMotion.matches) {
+        glassRun(() => setSlide(next));
+      } else {
+        setSlide(current);
+      }
+      startTimer();
+    }
+
+    // Когда вкладка скрыта — слайдер на паузе, при возвращении отсчёт идёт заново
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        clearTimeout(timer);
+      } else {
+        setSteps(-1);
+        void hero.offsetWidth; // перезапуск полоски
+        setSteps(current);
+        startTimer();
+      }
+    });
 
     // Ребристое стекло: полосы наезжают с обоих краёв к центру, размытие растёт,
     // на пике размытия меняется картинка, потом полосы расходятся к краям
@@ -159,8 +192,7 @@
     let h = 0;
     let strip = 60;
     let count = 1;
-    let glassFrame;
-    let pendingSwap = null;
+    let glassBusy = false;
 
     function resizeGlass() {
       w = bg.clientWidth;
@@ -247,29 +279,34 @@
     }
 
     function glassRun(onCovered) {
-      cancelAnimationFrame(glassFrame);
-      if (pendingSwap) pendingSwap();
-      pendingSwap = onCovered;
-      const start = performance.now();
+      glassBusy = true;
+      let swapped = false;
+      let elapsed = 0;
+      let last = performance.now();
       drawGlass(0);
       bg.style.filter = 'url(#hero-glass)';
 
       function frame(now) {
-        const t = Math.min((now - start) / glassTime, 1);
+        // Шаг не больше 50 мс: если вкладка была скрыта, анимация продолжится
+        // с того же места, а не перескочит в конец
+        elapsed += Math.min(now - last, 50);
+        last = now;
+        const t = Math.min(elapsed / glassTime, 1);
         drawGlass(t);
         // Меняем картинку, когда стекло закрыло весь экран и размытие почти на пике
-        if (t >= 0.41 && pendingSwap) {
-          pendingSwap();
-          pendingSwap = null;
+        if (t >= 0.41 && !swapped) {
+          swapped = true;
+          onCovered();
         }
         if (t < 1) {
-          glassFrame = requestAnimationFrame(frame);
+          requestAnimationFrame(frame);
         } else {
           bg.style.filter = '';
           sheenCtx.clearRect(0, 0, w, h);
+          glassBusy = false;
         }
       }
-      glassFrame = requestAnimationFrame(frame);
+      requestAnimationFrame(frame);
     }
 
     resizeGlass();
@@ -278,13 +315,19 @@
     hero.style.setProperty('--slide-delay', delay + 'ms');
     steps.forEach((step, i) => step.addEventListener('click', () => show(i)));
 
-    let touchX = null;
-    hero.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+    // Свайп считается, только если палец ушёл вбок больше, чем вверх-вниз
+    let touch = null;
+    hero.addEventListener('touchstart', (e) => {
+      touch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }, { passive: true });
     hero.addEventListener('touchend', (e) => {
-      if (touchX === null) return;
-      const dx = e.changedTouches[0].clientX - touchX;
-      if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
-      touchX = null;
+      if (!touch) return;
+      const dx = e.changedTouches[0].clientX - touch.x;
+      const dy = e.changedTouches[0].clientY - touch.y;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        show(current + (dx < 0 ? 1 : -1));
+      }
+      touch = null;
     });
 
     show(0, false);

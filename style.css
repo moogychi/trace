@@ -43,7 +43,9 @@ a {
 .hero__inner {
   --k: calc(100cqw / 1440);
   position: relative;
-  height: calc(820 * var(--k));
+  /* Как в макете (820 при ширине 1440), но не выше окна браузера,
+     чтобы «ТРЕЙС» не уезжало за край на больших мониторах */
+  height: max(560px, min(calc(820 * var(--k)), 100svh));
   overflow: hidden;
   color: var(--white);
   background: var(--accent);
@@ -302,7 +304,7 @@ a {
   position: absolute;
   z-index: 1;
   left: calc(32 * var(--k));
-  top: calc(504 * var(--k));
+  bottom: calc(24 * var(--k)); /* по нижнему краю, как «ТРЕЙС» */
   width: 19px;
   display: flex;
   flex-direction: column;
@@ -448,7 +450,6 @@ button.hero__step:not(.is-active):hover {
 
   .hero__steps {
     left: 24px;
-    top: auto;
     bottom: 40%;
   }
 
