@@ -757,6 +757,169 @@ button.hero__step:not(.is-active):hover {
   padding: 0 2px;
 }
 
+/* ===== Полноэкранное меню (десктоп) ===== */
+
+.menu {
+  --k: calc(100vw / 1440);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  visibility: hidden;
+  pointer-events: none;
+  color: #000;
+}
+
+.menu.is-open {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Стекло: слой на весь экран, текстура — ровно в полосе ниже белой части,
+   как в макете; выше — тёмно-бирюзовый (виден, пока шторки опускаются) */
+.menu__glass {
+  position: absolute;
+  inset: 0;
+  background:
+    url("img/menu-glass.jpg") center bottom / 100% calc(100% - 575 * var(--k)) no-repeat,
+    #1e4646;
+}
+
+.menu__panel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: calc(575 * var(--k));
+  background: var(--white);
+}
+
+/* Верхняя строка — на тех же местах, что на первом экране */
+.menu__logo {
+  position: absolute;
+  left: 24px;
+  top: 20px;
+}
+
+.menu__action {
+  position: absolute;
+  right: 96px;
+  top: 22px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #1d1d1d;
+}
+
+.menu__close {
+  position: absolute;
+  right: 20px;
+  top: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+/* Крупные пункты: серые, наведённый — чёрный */
+.menu__nav {
+  position: absolute;
+  left: calc(434 * var(--k));
+  top: calc(24 * var(--k));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: calc(28 * var(--k));
+  font-family: var(--font-wide);
+  font-weight: 400;
+  font-size: calc(40 * var(--k));
+  line-height: 1;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.menu__link {
+  color: #c9cece;
+  transition: color 0.4s ease;
+}
+
+.menu__link.is-active {
+  color: #000;
+}
+
+/* Картинка пункта: все лежат стопкой в своих рамках, новая открывается шторкой слева */
+.menu__photo {
+  position: absolute;
+  left: calc(20 * var(--k));
+  top: calc(288 * var(--k));
+  width: calc(204 * var(--k));
+  height: calc(267 * var(--k));
+  overflow: hidden;
+}
+
+.menu__pic {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+
+.menu__pic.is-shown {
+  visibility: visible;
+}
+
+.menu__pic img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Интерьер кадрирован как в макете: видна левая часть с креслами */
+.menu__photo .menu__interior {
+  inset: auto;
+  left: -12.25%;
+  top: -17.6%;
+  width: 276.5%;
+  height: 117.6%;
+  object-fit: fill;
+}
+
+.menu__contacts {
+  position: absolute;
+  right: calc(20 * var(--k));
+  bottom: calc(20 * var(--k));
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  font-size: 16px;
+  line-height: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.menu__contacts a {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.menu__contacts a:hover,
+.menu__action:hover {
+  opacity: 0.6;
+}
+
+.menu__sep {
+  width: 1px;
+  height: 16px;
+  background: #000;
+}
+
 /* ===== Планшет ===== */
 
 @media (max-width: 1199px) {

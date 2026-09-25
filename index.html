@@ -196,6 +196,49 @@
     </div>
   </section>
 
+  <!-- Полноэкранное меню (десктоп): белая шторка сверху, под ней полоса стекла -->
+  <div class="menu" id="menu" aria-hidden="true">
+    <div class="menu__glass"></div>
+    <div class="menu__panel">
+      <!-- Верхняя строка — на тех же местах, что на первом экране, только тёмная -->
+      <a class="menu__logo" href="#" aria-label="Трейс — на главную">
+        <img src="img/logo-dark.svg" width="137" height="34" alt="Трейс">
+      </a>
+      <a class="menu__action" href="#choose">
+        <span class="header__action-icon" aria-hidden="true"><img src="img/dot.svg" width="35.8" height="35.8" alt=""></span>
+        выбрать офис
+      </a>
+      <button class="menu__close" type="button" aria-label="Закрыть меню">
+        <img src="img/menu-dark.svg" width="32" height="32" alt="">
+      </button>
+
+      <nav class="menu__nav" aria-label="Разделы сайта">
+        <a class="menu__link" href="#about">о проекте</a>
+        <a class="menu__link" href="#location">локация</a>
+        <a class="menu__link is-active" href="#offices">помещения</a>
+        <a class="menu__link" href="#gallery">галерея</a>
+        <a class="menu__link" href="#news">новости</a>
+        <a class="menu__link" href="#contacts">контакты</a>
+      </nav>
+
+      <!-- Картинка к пункту меню: меняется при наведении (порядок — как у пунктов) -->
+      <div class="menu__photo" aria-hidden="true">
+        <div class="menu__pic"><img src="img/about-portrait.jpg" alt="" decoding="async"></div>
+        <div class="menu__pic"><img src="img/dominant-model.jpg" alt="" decoding="async"></div>
+        <div class="menu__pic"><img class="menu__interior" src="img/menu-interior.jpg" alt="" decoding="async"></div>
+        <div class="menu__pic"><img src="img/comfort-towers.png" alt="" decoding="async"></div>
+        <div class="menu__pic"><img src="img/slide2-bg.png" alt="" decoding="async"></div>
+        <div class="menu__pic"><img src="img/dominant-model.jpg" alt="" decoding="async"></div>
+      </div>
+
+      <div class="menu__contacts">
+        <a href="tel:+7422883311">+7 (422) 88-33-11</a>
+        <span class="menu__sep" aria-hidden="true"></span>
+        <a href="#presentation">скачать презентацию <img src="img/download.svg" width="21" height="21" alt=""></a>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/ScrollTrigger.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>

@@ -9,7 +9,13 @@ function setMenu(open) {
   toggle.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
 }
 
-toggle.addEventListener('click', () => setMenu(!header.classList.contains('is-open')));
+// На десктопе кнопка открывает полноэкранное меню (см. конец файла),
+// на планшете и телефоне — выпадающее
+const isDesktop = matchMedia('(min-width: 1200px)');
+toggle.addEventListener('click', () => {
+  if (isDesktop.matches && window.gsap) openFullMenu();
+  else setMenu(!header.classList.contains('is-open'));
+});
 // Закрываем меню: после выбора пункта, по Esc и по клику мимо
 header.querySelectorAll('.header__nav a').forEach((link) => {
   link.addEventListener('click', () => setMenu(false));
@@ -493,7 +499,8 @@ document.querySelectorAll('a[href^="#"]').forEach((link) => {
     const target = href === '#' ? document.body : document.querySelector(href);
     if (!target) return; // раздела пока нет
     e.preventDefault();
-    if (lenis) lenis.scrollTo(target, { duration: 1.4 });
+    // force — прокрутка сработает, даже если скролл был заблокирован открытым меню
+    if (lenis) lenis.scrollTo(target, { duration: 1.4, force: true });
     else target.scrollIntoView({ behavior: 'smooth' });
   });
 });
@@ -657,3 +664,85 @@ if (window.gsap && window.ScrollTrigger && !reduceMotion.matches) {
     ScrollTrigger.refresh();
   });
 }
+
+
+// ===== Полноэкранное меню (десктоп) =====
+//
+// Открытие одним движением: белая шторка опускается сверху, и почти сразу
+// за ней, внахлёст, опускается полоса стекла. Верхняя строка (логотип,
+// «выбрать офис», кнопка) стоит на тех же местах — шторка просто
+// «перекрашивает» её в тёмный. Остальное проявляется прозрачностью.
+// При наведении на пункт его картинка открывается шторкой слева.
+
+const menuEl = document.querySelector('.menu');
+const menuPanel = menuEl.querySelector('.menu__panel');
+const menuGlass = menuEl.querySelector('.menu__glass');
+const menuLinks = [...menuEl.querySelectorAll('.menu__link')];
+const menuPhotos = [...menuEl.querySelectorAll('.menu__pic')];
+const menuFade = menuEl.querySelectorAll('.menu__link, .menu__photo, .menu__contacts');
+let menuTl = null;
+let menuPhotoIndex = menuLinks.findIndex((link) => link.classList.contains('is-active'));
+let menuPhotoZ = 1;
+
+menuPhotos[menuPhotoIndex].classList.add('is-shown');
+
+function buildMenuTimeline() {
+  return gsap.timeline({ paused: true })
+    .fromTo(menuPanel,
+      { clipPath: 'inset(0% 0% 100% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1, ease: 'power3.inOut' }, 0)
+    // стекло стартует чуть позже и идёт внахлёст — одно движение, а не два шага
+    .fromTo(menuGlass,
+      { clipPath: 'inset(0% 0% 100% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)', duration: 1.1, ease: 'power3.inOut' }, 0.15)
+    .fromTo(menuFade,
+      { opacity: 0 },
+      { opacity: 1, duration: 0.6, ease: 'power1.out', stagger: 0.05 }, 0.6);
+}
+
+function openFullMenu() {
+  if (!menuTl) menuTl = buildMenuTimeline();
+  menuEl.classList.add('is-open');
+  menuEl.setAttribute('aria-hidden', 'false');
+  toggle.setAttribute('aria-expanded', 'true');
+  if (lenis) lenis.stop();
+  else document.documentElement.style.overflow = 'hidden';
+  menuTl.timeScale(1).play();
+}
+
+function closeFullMenu() {
+  if (!menuTl || !menuEl.classList.contains('is-open')) return;
+  toggle.setAttribute('aria-expanded', 'false');
+  if (lenis) lenis.start();
+  else document.documentElement.style.overflow = '';
+  // закрытие — то же движение назад, чуть быстрее
+  menuTl.timeScale(1.4).reverse().eventCallback('onReverseComplete', () => {
+    menuEl.classList.remove('is-open');
+    menuEl.setAttribute('aria-hidden', 'true');
+  });
+}
+
+menuEl.querySelector('.menu__close').addEventListener('click', closeFullMenu);
+menuEl.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeFullMenu));
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeFullMenu();
+});
+
+// Наведение на пункт: он становится чёрным, его картинка открывается шторкой слева
+menuLinks.forEach((link, i) => {
+  link.addEventListener('mouseenter', () => {
+    menuLinks.forEach((other) => other.classList.toggle('is-active', other === link));
+    if (i === menuPhotoIndex || !window.gsap) return;
+    menuPhotoIndex = i;
+    const pic = menuPhotos[i];
+    const img = pic.querySelector('img');
+    pic.classList.add('is-shown');
+    pic.style.zIndex = ++menuPhotoZ;
+    gsap.killTweensOf([pic, img]);
+    gsap.timeline()
+      .fromTo(pic,
+        { clipPath: 'inset(0% 100% 0% 0%)' },
+        { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.9, ease: 'power3.inOut' }, 0)
+      .fromTo(img, { scale: 1.15 }, { scale: 1, duration: 1.2, ease: 'power2.out' }, 0);
+  });
+});
