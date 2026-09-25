@@ -15,14 +15,25 @@
   <section class="hero">
     <div class="hero__inner">
       <div class="hero__bg" aria-hidden="true">
-        <div class="hero__sky">
-          <img src="img/sky-1.png" alt="">
-          <img src="img/sky-2.png" alt="">
-          <img src="img/sky-3.png" alt="">
+        <!-- Слайд 1: башня на фоне неба -->
+        <div class="hero__slide is-active">
+          <div class="hero__sky">
+            <img src="img/sky-1.png" alt="">
+            <img src="img/sky-2.png" alt="">
+            <img src="img/sky-3.png" alt="">
+          </div>
+          <img class="hero__tower" src="img/tower.png" alt="">
+          <div class="hero__glow"></div>
+          <div class="hero__shade"></div>
         </div>
-        <img class="hero__tower" src="img/tower.png" alt="">
-        <div class="hero__glow"></div>
-        <div class="hero__shade"></div>
+
+        <!-- Слайд 2: девушка -->
+        <div class="hero__slide">
+          <div class="hero__pair">
+            <img class="hero__wall" src="img/slide2-bg.png" alt="">
+            <img class="hero__woman" src="img/slide2-woman.png" alt="">
+          </div>
+        </div>
       </div>
 
       <header class="header">
@@ -54,13 +65,17 @@
         </button>
       </header>
 
-      <div class="hero__steps" aria-hidden="true">
-        <span class="hero__step">01</span>
-        <span class="hero__bar"><span></span></span>
+      <div class="hero__steps">
+        <button class="hero__step is-active" type="button" aria-label="Слайд 1">
+          01<span class="hero__bar"><span></span></span>
+        </button>
         <img src="img/line.svg" width="8" height="1" alt="">
-        <span class="hero__step">02</span>
+        <button class="hero__step" type="button" aria-label="Слайд 2">
+          02<span class="hero__bar"><span></span></span>
+        </button>
         <img src="img/line.svg" width="8" height="1" alt="">
-        <span class="hero__step">03</span>
+        <!-- Третьего слайда в макете пока нет -->
+        <span class="hero__step" aria-hidden="true">03</span>
       </div>
 
       <h1 class="hero__title">
@@ -78,6 +93,36 @@
       toggle.setAttribute('aria-expanded', open);
       toggle.setAttribute('aria-label', open ? 'Закрыть меню' : 'Открыть меню');
     });
+
+    // Слайдер первого экрана: смена каждые 6 секунд, клик по номеру, свайп
+    const hero = document.querySelector('.hero');
+    const slides = hero.querySelectorAll('.hero__slide');
+    const steps = hero.querySelectorAll('button.hero__step');
+    const delay = 6000;
+    let current = 0;
+    let timer;
+
+    function show(index) {
+      current = (index + slides.length) % slides.length;
+      slides.forEach((slide, i) => slide.classList.toggle('is-active', i === current));
+      steps.forEach((step, i) => step.classList.toggle('is-active', i === current));
+      clearTimeout(timer);
+      timer = setTimeout(() => show(current + 1), delay);
+    }
+
+    hero.style.setProperty('--slide-delay', delay + 'ms');
+    steps.forEach((step, i) => step.addEventListener('click', () => show(i)));
+
+    let touchX = null;
+    hero.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+    hero.addEventListener('touchend', (e) => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX;
+      if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+      touchX = null;
+    });
+
+    show(0);
   </script>
 </body>
 </html>

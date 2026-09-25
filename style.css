@@ -43,9 +43,21 @@ a {
 }
 
 .hero__bg,
+.hero__slide,
 .hero__shade {
   position: absolute;
   inset: 0;
+}
+
+/* Слайды плавно сменяют друг друга */
+.hero__slide {
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 1s ease;
+}
+
+.hero__slide.is-active {
+  opacity: 1;
 }
 
 .hero__sky {
@@ -90,6 +102,36 @@ a {
 
 .hero__shade {
   background: linear-gradient(to bottom, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0));
+}
+
+/* Слайд 2: стена с тенью и девушка. Они в одной группе, чтобы девушка
+   всегда закрывала маленькую фигуру на фоне. Фото девушки отражено, как в макете */
+.hero__pair {
+  position: absolute;
+  left: calc(-301 * var(--k));
+  top: calc(-300 * var(--k));
+  width: calc(2073 * var(--k));
+  aspect-ratio: 2073 / 1464;
+}
+
+.hero__wall,
+.hero__woman {
+  position: absolute;
+  max-width: none;
+}
+
+.hero__wall {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hero__woman {
+  left: 0.92%;
+  top: 24.45%;
+  width: 50.84%;
+  height: 90.44%;
+  transform: scaleX(-1);
 }
 
 /* ----- Шапка ----- */
@@ -197,12 +239,39 @@ a {
   letter-spacing: 0.1em;
 }
 
+.hero__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+button.hero__step {
+  cursor: pointer;
+}
+
+button.hero__step:not(.is-active):hover {
+  opacity: 0.7;
+}
+
+/* Полоса под активным номером заполняется до смены слайда */
 .hero__bar {
+  display: none;
   position: relative;
   width: 8px;
   height: 164px;
-  margin-top: -12px; /* между «01» и полосой отступ 4px */
   border: 1px solid var(--white);
+}
+
+.hero__step.is-active .hero__bar {
+  display: block;
 }
 
 .hero__bar span {
@@ -210,8 +279,15 @@ a {
   left: -0.5px;
   top: -1px;
   width: 8px;
-  height: 105px;
+  height: 0;
   background: var(--white);
+  animation: hero-progress var(--slide-delay, 6s) linear forwards;
+}
+
+@keyframes hero-progress {
+  to {
+    height: calc(100% + 2px);
+  }
 }
 
 /* ----- Большое слово «ТРЕЙС» ----- */
@@ -258,6 +334,16 @@ a {
   .hero__glow {
     top: 52%;
     height: 45%;
+  }
+
+  /* Слайд 2 масштабируется по высоте экрана. Группа выше экрана,
+     чтобы спрятать чёрные полосы сверху и снизу фото стены */
+  .hero__pair {
+    left: 0;
+    top: -14%;
+    width: auto;
+    height: 120%;
+    transform: translateX(-11.6%);
   }
 
   .header__tag {
@@ -339,7 +425,6 @@ a {
   .hero__tower {
     height: 72%;
   }
-
   .hero__steps {
     display: none;
   }
